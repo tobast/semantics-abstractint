@@ -1,0 +1,7 @@
+S .
+S domains
+S frontend
+S iterator
+S libs
+B _build/*
+PKG zarith
