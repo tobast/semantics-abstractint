@@ -25,3 +25,6 @@ debug: $(TARGET_DEBUG)
 
 clean:
 	$(OCAMLBUILD) -clean
+
+dot: cfg.dot
+	dot -Tpng $< | feh -
