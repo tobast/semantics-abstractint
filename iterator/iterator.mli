@@ -18,6 +18,9 @@ module type S = sig
     exception NoMainFunc
     (** Thrown when the given cfg does not contain a main function *)
 
+    exception NotImplemented
+    (** Thrown when an unimplemented feature is required. *)
+
     val run : Cfg.cfg -> domType Cfg.NodeMap.t
     (** Iterates on the program until a fixpoint is reached,
      * returning the invariants gathered. *)

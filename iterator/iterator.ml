@@ -12,8 +12,9 @@ module type S = sig
     exception InvalidFlow of Cfg.node
     exception InternalError of string
     exception NoMainFunc
+    exception NotImplemented
 
-    val run : Cfg.cfg -> domType
+    val run : Cfg.cfg -> domType NodeMap.t
 end
 
 module Make(X : Domain.DOMAIN) = struct
@@ -22,13 +23,22 @@ module Make(X : Domain.DOMAIN) = struct
     exception InvalidFlow of Cfg.node
     exception InternalError of string
     exception NoMainFunc
+    exception NotImplemented
 
-    let domOfArc arc env = match arc.arc_inst with
-    | _ -> assert false
+    let extractDomain env node =
+        try NodeMap.find node env with
+            Not_found -> raise (InternalError "Node not found in env.")
+
+    let domOfArc arc dom = match arc.arc_inst with
+    | CFG_skip _ -> dom
+    | CFG_assign(v,expr) -> X.assign dom v expr
+    | CFG_guard(expr) -> X.guard dom expr
+    | CFG_assert(expr) -> dom (*TODO*)
+    | CFG_call(func) -> raise NotImplemented
 
     let updateNode node env =
         let nDom = List.fold_left (fun cur arc -> 
-                X.join cur (domOfArc arc env))
+                X.join cur (domOfArc arc (extractDomain env arc.arc_src)))
             X.bottom node.node_in in
         NodeMap.add node nDom env
 
