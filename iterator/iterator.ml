@@ -51,7 +51,8 @@ module Make(X : Domain.DOMAIN) = struct
                     "Node not found in environment.")) in
         let nEnv = updateNode node env in
 
-        let nWorklist = (match precAbstract = (NodeMap.find node nEnv) with
+        let nWorklist = NodeSet.remove node
+            (match precAbstract = (NodeMap.find node nEnv) with
             | true -> worklist
             | false -> NodeSet.union worklist
                 (NodeSet.of_list (List.map (fun x -> x.arc_dst) node.node_out))
@@ -60,7 +61,7 @@ module Make(X : Domain.DOMAIN) = struct
             
     let run cfg =
         let rec processInit node env =
-            if cfg.cfg_init_exit = node then
+            if cfg.cfg_init_exit.node_id = node.node_id then
                 env
             else begin
                 if List.length node.node_out <> 1 then
@@ -89,5 +90,8 @@ module Make(X : Domain.DOMAIN) = struct
         let preiterEnv = NodeMap.add entryNode
             (NodeMap.find cfg.cfg_init_exit postinitEnv) postinitEnv in
 
-        iterate preiterEnv (NodeSet.singleton entryNode)
+        let startWL = NodeSet.of_list
+            (List.map (fun x -> x.arc_dst) entryNode.node_out) in
+
+        iterate preiterEnv startWL
 end
