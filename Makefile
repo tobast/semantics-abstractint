@@ -7,20 +7,24 @@ PACKAGES=zarith
 TARGET=main.native
 TARGET_DEBUG=main.d.byte
 
+.PHONY: buildanyway_
+
 all: $(TARGET)
 
 debug: $(TARGET_DEBUG)
 
-%.native: %.ml
+buildanyway_: ;
+
+%.native: %.ml buildanyway_
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) -pkgs $(PACKAGES) $@
 
-%.byte: %.ml
+%.byte: %.ml buildanyway_
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) -pkgs $(PACKAGES) $@
 
-%.p.native: %.ml
+%.p.native: %.ml buildanyway_
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) -pkgs $(PACKAGES) $@
 
-%.d.byte: %.ml
+%.d.byte: %.ml buildanyway_
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) -pkgs $(PACKAGES) $@
 
 clean:
