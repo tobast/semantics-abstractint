@@ -73,7 +73,7 @@ module Make(X : Domain.DOMAIN) = struct
         in
 
         let startEnv = List.fold_left (fun cur node ->
-                NodeMap.add node (X.init cfg.cfg_vars) cur)
+                NodeMap.add node (*(X.init cfg.cfg_vars)*) X.bottom cur)
             NodeMap.empty cfg.cfg_nodes in
 
         (* Environment after global initializations. *)

@@ -10,6 +10,7 @@ open Abstract_syntax_tree
 (* module IntSet = Set.Make(struct type t=int let compare=compare end) *)
 
 exception Not_implemented
+exception UndefinedVariable of Cfg.var
 
 module SingleState = struct
     type t = Z.t VarMap.t
@@ -25,6 +26,9 @@ let init l =
 
 let bottom = SiStSet.empty
 
+let is_bottom a =
+    SiStSet.is_empty a
+
 let rec evalExpr st = function
 | CFG_int_unary (op,ex) -> (match op with
     | AST_UNARY_PLUS -> evalExpr st ex
@@ -39,17 +43,23 @@ let rec evalExpr st = function
     | AST_MODULO -> Z.rem v1 v2
     )
 | CFG_int_var v ->
-    VarMap.find v st
+    (try VarMap.find v st
+    with Not_found -> raise (UndefinedVariable v))
 | CFG_int_const c ->
     c
 | CFG_int_rand (low, high) ->
     raise Not_implemented
 
 let assign dom var expr : SiStSet.t =
-    SiStSet.fold (fun st cur -> (try
-            SiStSet.add (VarMap.add var (evalExpr st expr) st) cur
-        with Not_found -> cur))
-        dom SiStSet.empty
+    if is_bottom dom then
+        (* Raises UndefinedVariable if a variable is missing. *)
+        SiStSet.singleton
+            (VarMap.add var (evalExpr VarMap.empty expr) VarMap.empty)
+    else
+        SiStSet.fold (fun st cur -> (try
+                SiStSet.add (VarMap.add var (evalExpr st expr) st) cur
+            with UndefinedVariable _ -> cur))
+            dom SiStSet.empty
 
 let rec evalBoolExpr st = function
 | CFG_bool_unary(op,ex) ->
@@ -90,9 +100,6 @@ let widen a b =
 
 let subset a b =
     SiStSet.subset a b
-
-let is_bottom a =
-    SiStSet.is_empty a
 
 let print chan a =
     let ft = Format.formatter_of_out_channel chan in
