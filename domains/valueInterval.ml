@@ -13,6 +13,11 @@ let boundNeg = function
 | Int z -> Int z
 | PInf -> MInf
 
+let boundAbs = function
+| MInf -> PInf
+| PInf -> PInf
+| Int z -> Int (Z.abs z)
+
 let (+@) a b = match a,b with
 | Int z1,Int z2 -> Int (Z.add z1 z2)
 | MInf, Int _ | Int _, MInf -> MInf
@@ -68,15 +73,57 @@ let (<@) a b = match a,b with
 | MInf, _ | _,PInf -> true
 | PInf,_ | _,MInf -> false
 | Int z1, Int z2 -> Z.lt z1 z2
+let (<=@) a b = match a,b with
+| MInf, _ | _,PInf -> true
+| PInf,_ | _,MInf -> false
+| Int z1, Int z2 -> Z.leq z1 z2
 
+let bottomize = function
+| Bottom -> Bottom
+| Interv(a,b) as dom ->
+        if b <@ a
+            then Bottom
+            else dom
+
+let boundPred z = z -@ (Int Z.one)
+let boundSucc z = z +@ (Int Z.one)
+
+let boundMin a b =
+    if a <@ b
+        then a
+        else b
+let boundMax a b =
+    if a <@ b
+        then b
+        else a
+
+exception BadDomain
+let domDivide d1 d2 = match d1,d2 with
+| Bottom, _ | _, Bottom -> Bottom
+| Interv(a,b), Interv(c,d) ->
+    if (Int Z.zero) <@ c then
+        Interv(boundMin (a /@ c) (a /@ d), boundMax (b /@ c) (b /@ d))
+    else if d <@ (Int Z.zero) then
+        Interv(boundMin (b /@ c) (b /@ d), boundMax (a /@ c) (a /@ d))
+    else
+        raise BadDomain
+
+exception EmptyList
 let listMin l =
     let rec get c = function
     | [] -> c
     | hd::tl ->
-            if hd (<@) c then
+            if hd <@ c then
                 get hd tl
             else
                 get c tl
+    in
+    (match l with
+    | [] -> raise EmptyList
+    | x::[] -> x
+    | l -> get (List.hd l) (List.tl l))
+let listMax l =
+    boundNeg (listMin (List.map boundNeg l))
 
 let top = Interv(MInf,PInf)
 
@@ -85,6 +132,15 @@ let bottom = Bottom
 let const z = Interv(Int z, Int z)
 
 let rand a b = Interv(Int a, Int b)
+
+let join d1 d2 = match (d1,d2) with
+| Bottom, x | x, Bottom -> x
+| Interv(a,b), Interv(c,d) ->
+        Interv(boundMin a c, boundMax b d)
+let meet d1 d2 = match (d1,d2) with
+| Bottom, x | x, Bottom -> Bottom
+| Interv(a,b), Interv(c,d) ->
+        Interv(boundMax a c, boundMin b d)
 
 let unary iv op = match(iv, op) with
 | Bottom,_ -> Bottom
@@ -99,7 +155,78 @@ let binary iv1 iv2 op = match op,iv1,iv2 with
         Interv(a -@ d, b -@ c)
 | AST_MULTIPLY,Interv(a,b),Interv(c,d) ->
         let pairs = [ a *@ c ; a *@ d ; b *@ c ; b *@ d ] in
-
-| AST_DIVIDE,Interv(a,b),Interv(c,d) ->
+        Interv(listMin pairs, listMax pairs)
+| AST_DIVIDE,(Interv(a,b) as num),Interv(c,d) ->
+        let inf = Interv(c, boundMin d (Int Z.minus_one)) in
+        let sup = Interv(boundMax c (Int Z.one), d) in
+        join (domDivide num inf) (domDivide num sup)
 | AST_MODULO,Interv(a,b),Interv(c,d) ->
+        let bound = boundMax (boundAbs c) (boundAbs d) in
+        join
+            (if a <@ (Int Z.zero) then Interv(boundNeg bound, Int Z.zero)
+                                  else Bottom)
+            (if (Int Z.zero) <@ b then Interv(Int Z.zero, bound)
+                                  else Bottom)
+
+let rec compare d1 d2 op = match d1,d2 with
+| Bottom,_ | _,Bottom -> Bottom,Bottom
+| Interv(a,b), Interv(c,d) ->
+    let swap (x,y) = (y,x) in
+    (match op with
+    | AST_EQUAL ->
+            let m = meet d1 d2 in
+            m,m
+    | AST_NOT_EQUAL ->
+            let isIn x a b = (a <=@ x && x <=@ b) in
+            let diff a b c d =
+                bottomize (Interv (
+                    (if isIn a c d then d else a),
+                    (if isIn b c d then c else b) ) )
+            in
+            (diff a b c d), (diff c d a b)
+    | AST_LESS ->
+            (bottomize (Interv (a, boundMin b (boundPred d)))),
+            (bottomize (Interv (boundMax c (boundSucc a), d)))
+    | AST_LESS_EQUAL ->
+            (bottomize (Interv (a, boundMin b d))),
+            (bottomize (Interv (boundMax c a, d)))
+    | AST_GREATER ->
+            swap (compare d2 d1 AST_LESS)
+    | AST_GREATER_EQUAL ->
+            swap (compare d2 d1 AST_LESS_EQUAL)
+    )
+
+let bwd_unary d1 op r =
+    (*TODO IMPLEMENT*) assert false
+
+let bwd_binary d1 d2 op r =
+    (*TODO IMPLEMENT*) assert false
+
+let widen d1 d2 = match (d1,d2) with
+| x, Bottom | Bottom, x -> x
+| Interv(a,b), Interv(c,d) ->
+        Interv( (if a <=@ c then a else MInf) ,
+            (if d <=@ b then b else PInf) )
+
+let subset d1 d2 = match (d1,d2) with
+| Bottom, _ -> true
+| _, Bottom -> false
+| Interv(a,b), Interv(c,d) ->
+        (c <=@ a) && (b <=@ d)
+
+let is_bottom = function
+| Bottom -> true
+| _ -> false
+
+let print_bound fmt = function 
+| MInf -> Format.fprintf fmt "+∞"
+| PInf -> Format.fprintf fmt "-∞"
+| Int z -> Format.fprintf fmt "%s" (Z.to_string z)
+
+let print chan dom =
+    let fmt = Format.formatter_of_out_channel chan in
+    (match dom with
+    | Bottom -> Format.fprintf fmt "⊥"
+    | Interv(a,b) -> Format.fprintf fmt "[%a, %a]"
+                print_bound a print_bound b)
 
