@@ -52,9 +52,14 @@ let rec evalExpr st = function
 
 let assign dom var expr : SiStSet.t =
     if is_bottom dom then
-        (* Raises UndefinedVariable if a variable is missing. *)
-        SiStSet.singleton
+        (try SiStSet.singleton
             (VarMap.add var (evalExpr VarMap.empty expr) VarMap.empty)
+        with UndefinedVariable v ->
+            Format.eprintf "Undefined variable %s (%d) in @?"
+                v.var_name v.var_id;
+            Cfg_printer.print_int_expr stderr expr;
+            Format.eprintf ".@.";
+            raise (UndefinedVariable v))
     else
         SiStSet.fold (fun st cur -> (try
                 SiStSet.add (VarMap.add var (evalExpr st expr) st) cur

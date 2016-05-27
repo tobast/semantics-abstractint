@@ -46,10 +46,17 @@ module Make(X : Domain.DOMAIN) = struct
     | 0 -> env
     | _ ->
         let node = NodeSet.choose worklist in
+        Format.eprintf "At %d: worklist = @?" node.node_id;
+        NodeSet.iter (fun x -> Format.eprintf "%d " x.node_id) worklist;
+        Format.eprintf "@.";
         let precAbstract = (try NodeMap.find node env with
                 Not_found -> raise (InternalError
                     "Node not found in environment.")) in
         let nEnv = updateNode node env in
+
+        Format.eprintf "Changed domain at %d:@." node.node_id;
+        X.print stderr (NodeMap.find node nEnv);
+        Format.eprintf "@.";
 
         let nWorklist = NodeSet.remove node
             (match precAbstract = (NodeMap.find node nEnv) with
