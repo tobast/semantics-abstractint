@@ -218,15 +218,14 @@ let is_bottom = function
 | Bottom -> true
 | _ -> false
 
-let print_bound fmt = function 
-| MInf -> Format.fprintf fmt "+∞"
-| PInf -> Format.fprintf fmt "-∞"
-| Int z -> Format.fprintf fmt "%s" (Z.to_string z)
+let string_of_bound  = function 
+| MInf -> "+∞"
+| PInf -> "-∞"
+| Int z -> (Z.to_string z)
 
 let print chan dom =
-    let fmt = Format.formatter_of_out_channel chan in
     (match dom with
-    | Bottom -> Format.fprintf fmt "⊥"
-    | Interv(a,b) -> Format.fprintf fmt "[%a, %a]"
-                print_bound a print_bound b)
+    | Bottom -> Printf.fprintf chan "⊥"
+    | Interv(a,b) -> Printf.fprintf chan "[%s, %s]"
+                (string_of_bound a) (string_of_bound b))
 
