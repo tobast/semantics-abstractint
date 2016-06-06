@@ -12,6 +12,7 @@
 *)
 
 open Iterator
+open DomainGeneric
 
 module ConcreteIterator = Iterator.Make(ConcreteDomain)
 module IntervalIterator = Iterator.Make(DomainInterval)
