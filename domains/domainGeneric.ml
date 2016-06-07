@@ -36,6 +36,21 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
         VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None, None | None, Some _ | Some _, None -> None
             | Some sv1, Some sv2 -> Some (ValueX.meet sv1 sv2)))
+        
+    let rec bwdPropagate exp value dom = match exp with
+    | CFG_int_unary(op,ex) ->
+        let bwdVal = ValueX.bwd_unary (evalIntExpr dom ex) op value in
+        bwdPropagate ex bwdVal dom
+	| CFG_int_binary(op,ex1,ex2) ->
+        let bwdLeft,bwdRight = ValueX.bwd_binary
+            (evalIntExpr dom ex1) (evalIntExpr dom ex2)
+            op value in
+        meet
+            (bwdPropagate ex1 bwdLeft dom)
+            (bwdPropagate ex2 bwdRight dom)
+	| CFG_int_var(var) -> VarMap.add var value dom
+	| CFG_int_const(cst) -> dom
+	| CFG_int_rand(lo,hi) -> dom
 
     exception NotElimFail
     let guard dom expr =
@@ -57,8 +72,9 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             and iv2 = evalIntExpr dom e2 in
             
             let left,right = ValueX.compare iv1 iv2 cmp in
-            ignore left ; ignore right ;
-            assert false
+            meet
+                (bwdPropagate e1 left dom)
+                (bwdPropagate e2 right dom)
         | CFG_bool_const(b) ->
             (match b with
             | false -> bottom
