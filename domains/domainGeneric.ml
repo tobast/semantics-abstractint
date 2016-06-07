@@ -97,4 +97,5 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
 end
 
 module DomainInterval = Make(ValueInterval)
+module DomainConstant = Make(ValueConstant)
 

@@ -16,8 +16,9 @@ open DomainGeneric
 
 module ConcreteIterator = Iterator.Make(ConcreteDomain)
 module IntervalIterator = Iterator.Make(DomainInterval)
+module ConstantIterator = Iterator.Make(DomainConstant)
 
-type analysisDomains = DomIntervals | DomConcrete
+type analysisDomains = DomIntervals | DomConcrete | DomConstants
 module DomSet = Set.Make(struct type t=analysisDomains let compare=compare end)
 
 let domains = ref DomSet.empty
@@ -26,9 +27,12 @@ let argParse = [
     "-concrete", (Arg.Unit(fun () ->
             domains := DomSet.add DomConcrete !domains)),
         "Use the concrete domain to analyze code. MAY NOT TERMINATE." ;
+    "-constants", (Arg.Unit(fun () ->
+            domains := DomSet.add DomConstants !domains)),
+        "Use the constants domain to analyze code." ;
     "-interval", (Arg.Unit(fun () ->
             domains := DomSet.add DomIntervals !domains)),
-        "Use toe intervals domain to analyze code." ;
+        "Use the intervals domain to analyze code." ;
     "-dot", Arg.Set(writeDot),
         "Writes the control flow graph (in Dot format) to 'cfg.dot'." ]
 let usageStr = Sys.argv.(0) ^ " [options] file1.c file2.c ... fileN.c"
@@ -61,15 +65,13 @@ let process filename =
             | DomConcrete ->
                 let res = ConcreteIterator.run cfg in
                 printDomain ConcreteDomain.print res
+            | DomConstants ->
+                let res = ConstantIterator.run cfg in
+                printDomain DomainConstant.print res
         )) !domains
                 
 
 (* parses arguments to get filename *)
 let main () =
-  (*
-  match Array.to_list Sys.argv with
-  | _::filename::_ -> dump filename
-  | _ -> invalid_arg "no source file specified"
-  *)
     Arg.parse argParse process usageStr
 let _ = main ()
