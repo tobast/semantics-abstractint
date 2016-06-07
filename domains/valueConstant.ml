@@ -100,7 +100,7 @@ let meet v1 v2 = match v1,v2 with
 | Int x1, Int x2 ->
         if x1 = x2 then Int x1 else Bottom
 
-let widen v1 _ = v1
+let widen v1 v2 = join v1 v2
 
 let subset d1 d2 = match d1,d2 with
 | Bottom,_ | _,Top -> true

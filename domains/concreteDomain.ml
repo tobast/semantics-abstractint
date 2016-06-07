@@ -102,8 +102,7 @@ let guard dom expr =
 let join a b =
     SiStSet.union a b
 
-let widen a b =
-    join a b
+let widen a b = join a b
 
 let subset a b =
     SiStSet.subset a b

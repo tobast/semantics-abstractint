@@ -201,12 +201,32 @@ let bwd_unary d1 op r =
 
 let bwd_binary d1 d2 op r =
     (*TODO IMPLEMENT*) assert false
+    
+let string_of_bound  = function 
+| MInf -> "-∞"
+| PInf -> "+∞"
+| Int z -> (Z.to_string z)
 
-let widen d1 d2 = match (d1,d2) with
+let print chan dom =
+    (match dom with
+    | Bottom -> Printf.fprintf chan "⊥"
+    | Interv(a,b) -> Printf.fprintf chan "[%s, %s]"
+                (string_of_bound a) (string_of_bound b))
+
+
+let widen d1 d2 = let out = match (d1,d2) with
 | x, Bottom | Bottom, x -> x
 | Interv(a,b), Interv(c,d) ->
         Interv( (if a <=@ c then a else MInf) ,
             (if d <=@ b then b else PInf) )
+    in
+    let printerr = print stderr in
+    Printf.eprintf "Widened ";
+    printerr d1 ; printerr d2 ;
+    Printf.eprintf " to ";
+    printerr out ;
+    Printf.eprintf "\n";
+    out
 
 let subset d1 d2 = match (d1,d2) with
 | Bottom, _ -> true
@@ -217,15 +237,4 @@ let subset d1 d2 = match (d1,d2) with
 let is_bottom = function
 | Bottom -> true
 | _ -> false
-
-let string_of_bound  = function 
-| MInf -> "+∞"
-| PInf -> "-∞"
-| Int z -> (Z.to_string z)
-
-let print chan dom =
-    (match dom with
-    | Bottom -> Printf.fprintf chan "⊥"
-    | Interv(a,b) -> Printf.fprintf chan "[%s, %s]"
-                (string_of_bound a) (string_of_bound b))
 
