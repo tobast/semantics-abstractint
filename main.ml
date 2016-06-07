@@ -46,10 +46,11 @@ let dump filename =
 
 let printDomain printer dom =
     Cfg.NodeMap.iter (fun nd v ->
-        Format.printf "NODE %d [%s]: @."
+        Format.printf "NODE %d [%s]: (took %d iterations)@."
             Cfg.(nd.node_id) (Cfg_printer.string_of_position
-                Cfg.(nd.node_pos));
-        printer stdout v;
+                Cfg.(nd.node_pos))
+            (snd v);
+        printer stdout (fst v);
         Format.printf "@.") dom
 
 (** Processes the given file using the given options *)

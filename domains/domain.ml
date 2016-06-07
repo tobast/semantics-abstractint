@@ -21,6 +21,9 @@ module type DOMAIN =
        to integers
      *)
     type t
+    
+    (* Checks whether two domains are equal. *)
+    val equal: t -> t -> bool
 
     (* initial environment, with all variables initialized to 0 *)
     val init: var list -> t

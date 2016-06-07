@@ -3,6 +3,9 @@ open Abstract_syntax_tree
 
 module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
     type t = ValueX.t VarMap.t
+    
+    let equal d1 d2 =
+        VarMap.equal (=) d1 d2
 
     let init vars =
         List.fold_left (fun cur var ->

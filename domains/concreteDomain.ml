@@ -20,6 +20,8 @@ module SiStSet = Set.Make(SingleState)
 
 type t = SiStSet.t
 
+let equal = (=)
+
 let init l =
     SiStSet.singleton (List.fold_left (fun cur v -> VarMap.add v Z.zero cur)
         VarMap.empty l)

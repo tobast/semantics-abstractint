@@ -14,7 +14,7 @@ module type S = sig
     exception NoMainFunc
     exception NotImplemented
 
-    val run : Cfg.cfg -> domType NodeMap.t
+    val run : Cfg.cfg -> (domType*int) NodeMap.t
 end
 
 module Make(X : Domain.DOMAIN) = struct
@@ -26,7 +26,7 @@ module Make(X : Domain.DOMAIN) = struct
     exception NotImplemented
 
     let extractDomain env node =
-        try NodeMap.find node env with
+        try fst (NodeMap.find node env) with
             Not_found -> raise (InternalError "Node not found in env.")
 
     let domOfArc arc dom = match arc.arc_inst with
@@ -36,11 +36,12 @@ module Make(X : Domain.DOMAIN) = struct
     | CFG_assert(expr) -> dom (*TODO*)
     | CFG_call(func) -> raise NotImplemented
 
-    let updateNode node env =
-        let nDom = List.fold_left (fun cur arc -> 
-                X.join cur (domOfArc arc (extractDomain env arc.arc_src)))
+    let updateNode node env curVisits =
+        let nDom : X.t = List.fold_left (fun cur arc -> 
+                X.join cur
+                    (domOfArc arc (extractDomain env arc.arc_src)))
             X.bottom node.node_in in
-        NodeMap.add node nDom env
+        NodeMap.add node (nDom, (curVisits+1)) env
 
     let rec iterate env worklist = match NodeSet.cardinal worklist with
     | 0 -> env
@@ -50,10 +51,10 @@ module Make(X : Domain.DOMAIN) = struct
         Format.eprintf "At %d: worklist = @?" node.node_id;
         NodeSet.iter (fun x -> Format.eprintf "%d " x.node_id) worklist;
         Format.eprintf "@."; *)
-        let precAbstract = (try NodeMap.find node env with
+        let precAbstract,precVisits = (try NodeMap.find node env with
                 Not_found -> raise (InternalError
                     "Node not found in environment.")) in
-        let nEnv = updateNode node env in
+        let nEnv = updateNode node env precVisits in
 
         (*
         Format.eprintf "Changed domain at %d:@." node.node_id;
@@ -61,10 +62,17 @@ module Make(X : Domain.DOMAIN) = struct
         Format.eprintf "@."; *)
 
         let nWorklist = NodeSet.remove node
-            (match precAbstract = (NodeMap.find node nEnv) with
+            (match X.equal precAbstract (fst (NodeMap.find node nEnv)) with
             | true -> worklist
-            | false -> NodeSet.union worklist
-                (NodeSet.of_list (List.map (fun x -> x.arc_dst) node.node_out))
+            | false ->
+                (*
+                Format.eprintf "Domain changed: from @."; 
+                X.print stderr precAbstract;
+                Format.eprintf "to@.";
+                X.print stderr (NodeMap.find node nEnv);
+                Format.eprintf "===@."; *)
+                NodeSet.union worklist (NodeSet.of_list
+                    (List.map (fun x -> x.arc_dst) node.node_out))
             ) in
         iterate nEnv nWorklist
             
@@ -77,12 +85,12 @@ module Make(X : Domain.DOMAIN) = struct
                     (* Invalid init node *)
                     raise (InvalidFlow node);
                 let outArc = List.hd node.node_out in
-                processInit outArc.arc_dst (updateNode outArc.arc_dst env)
+                processInit outArc.arc_dst (updateNode outArc.arc_dst env 0)
             end
         in
 
         let startEnv = List.fold_left (fun cur node ->
-                NodeMap.add node (*(X.init cfg.cfg_vars)*) X.bottom cur)
+                NodeMap.add node (*(X.init cfg.cfg_vars)*) (X.bottom,0) cur)
             NodeMap.empty cfg.cfg_nodes in
 
         (* Environment after global initializations. *)

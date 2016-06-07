@@ -21,9 +21,10 @@ module type S = sig
     exception NotImplemented
     (** Thrown when an unimplemented feature is required. *)
 
-    val run : Cfg.cfg -> domType Cfg.NodeMap.t
+    val run : Cfg.cfg -> (domType*int) Cfg.NodeMap.t
     (** Iterates on the program until a fixpoint is reached,
-     * returning the invariants gathered. *)
+     * returning for each control point a pair of the invariant gathered
+     * and the number of times this CP was visited. *)
 end
 
 module Make(X : Domain.DOMAIN) : S with type domType = X.t
