@@ -196,11 +196,30 @@ let rec compare d1 d2 op = match d1,d2 with
             swap (compare d2 d1 AST_LESS_EQUAL)
     )
 
-let bwd_unary d1 op r =
-    (*TODO IMPLEMENT*) assert false
+let bwd_unary d1 op r = match d1,r with
+| Bottom,_ | _,Bottom -> Bottom
+| Interv(_,_), Interv(lo,hi) -> (match op with
+    | AST_UNARY_PLUS -> meet d1 r
+    | AST_UNARY_MINUS -> meet d1 (Interv(boundNeg hi, boundNeg lo))
+)
 
-let bwd_binary d1 d2 op r =
-    (*TODO IMPLEMENT*) assert false
+let bwd_binary d1 d2 op r = match d1,d2,r with
+| Bottom,_,_ | _,Bottom,_ | _,_,Bottom -> Bottom,Bottom
+| Interv(a,b), Interv(c,d), Interv(lo,hi) -> (match op with
+    | AST_PLUS ->
+        meet d1 (binary r d2 AST_MINUS),
+        meet d2 (binary r d1 AST_MINUS)
+	| AST_MINUS ->
+        meet d1 (binary r d2 AST_PLUS),
+        meet d2 (binary d1 r AST_MINUS)
+	| AST_MULTIPLY ->
+        meet d1 (binary r d2 AST_DIVIDE),
+        meet d2 (binary r d1 AST_DIVIDE)
+	| AST_DIVIDE ->
+        meet d1 (binary r d2 AST_MULTIPLY),
+        meet d2 (binary d1 r AST_DIVIDE)
+	| AST_MODULO -> d1,d2
+)
     
 let string_of_bound  = function 
 | MInf -> "-∞"
