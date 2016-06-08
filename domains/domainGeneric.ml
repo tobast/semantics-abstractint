@@ -94,6 +94,12 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             | None,None -> None
             | Some v, None | None, Some v -> Some v
             | Some v1, Some v2 -> Some (ValueX.widen v1 v2)))
+        
+    let narrow =
+        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+            | None,None -> None
+            | Some v, None | None, Some v -> Some v
+            | Some v1, Some v2 -> Some (ValueX.narrow v1 v2)))
 
     let subset d1 d2 =
         VarMap.fold (fun key v cur -> match cur with

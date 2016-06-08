@@ -76,6 +76,9 @@ module type VALUE_DOMAIN =
         
     (* widening *)
     val widen: t -> t -> t
+    
+    (* narrow *)
+    val narrow: t -> t -> t
        
     (* subset inclusion of concretizations *)
     val subset: t -> t -> bool

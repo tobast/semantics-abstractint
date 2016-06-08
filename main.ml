@@ -27,7 +27,7 @@ let argParse = [
     "-concrete", (Arg.Unit(fun () ->
             domains := DomSet.add DomConcrete !domains)),
         "Use the concrete domain to analyze code. MAY NOT TERMINATE." ;
-    "-constants", (Arg.Unit(fun () ->
+    "-constant", (Arg.Unit(fun () ->
             domains := DomSet.add DomConstants !domains)),
         "Use the constants domain to analyze code." ;
     "-interval", (Arg.Unit(fun () ->

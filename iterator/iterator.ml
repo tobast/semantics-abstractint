@@ -63,6 +63,9 @@ module Make(X : Domain.DOMAIN) = struct
     let extractDomain env node =
         try fst (NodeMap.find node env) with
             Not_found -> raise (InternalError "Node not found in env.")
+    let extractVisits env node =
+        try snd (NodeMap.find node env) with
+            Not_found -> raise (InternalError "Node not found in env.")
 
     let domOfArc arc dom = match arc.arc_inst with
     | CFG_skip _ -> dom
@@ -80,20 +83,48 @@ module Make(X : Domain.DOMAIN) = struct
         let fromOrder = extractNodeOrder nodeOrder fromNode in
         let cOrder = extractNodeOrder nodeOrder cNode in
         if shouldWiden fromOrder cOrder then
-            X.widen prevDom dom
+            if X.subset dom prevDom then (
+                Format.eprintf "NARROWING.@." ;
+                X.narrow prevDom dom )
+            else
+                X.widen prevDom dom
         else
             dom
 
-    let updateNode nodeOrd node env curVisits =
-        let prevDom = extractDomain env node in 
-        let nDom : X.t = List.fold_left (fun cur arc -> 
-                X.join cur
-                    (doWiden nodeOrd node arc.arc_src prevDom
-                        (domOfArc arc (extractDomain env arc.arc_src))))
+            (*
+    let doNarrow nodeOrder node env pEnv =
+        let cOrder = extractNodeOrder nodeOrder node in
+        let nDom =
+            List.fold_left (fun cur arc ->
+                let fromNode = arc.arc_src in
+                let fromOrder = extractNodeOrder nodeOrder fromNode in
+                
+                if shouldWiden fromOrder cOrder then
+                    X.join cur (X.narrow
+                        (domOfArc arc (extractDomain pEnv arc.arc_src))
+                        (domOfArc arc (extractDomain env arc.arc_src)))
+                else
+                    X.join cur (domOfArc arc (extractDomain env arc.arc_src))
+                )
             X.bottom node.node_in in
-        NodeMap.add node (nDom, (curVisits+1)) env
-
-    let rec iterate nodeOrd env worklist = match NodeSet.cardinal worklist with
+        NodeMap.add node (nDom, (extractVisits env node)) env
+*)
+            
+    let updateNode nodeOrd node env pEnv curVisits =
+        let pDom = extractDomain env node in
+        let nDom = List.fold_left (fun cur arc -> 
+                let nVal = 
+                    (doWiden nodeOrd node arc.arc_src
+                        (domOfArc arc (extractDomain pEnv arc.arc_src))
+                        (domOfArc arc (extractDomain env arc.arc_src))) in
+                X.join cur nVal)
+            X.bottom node.node_in in
+            
+        NodeMap.add node (nDom, (curVisits+1)) env,
+            NodeMap.add node (pDom, curVisits) pEnv
+        
+    let rec iterate nodeOrd env pEnv worklist =
+        match NodeSet.cardinal worklist with
     | 0 -> env
     | _ ->
         let node = NodeSet.choose worklist in
@@ -104,7 +135,7 @@ module Make(X : Domain.DOMAIN) = struct
         let precAbstract,precVisits = (try NodeMap.find node env with
                 Not_found -> raise (InternalError
                     "Node not found in environment.")) in
-        let nEnv = updateNode nodeOrd node env precVisits in
+        let nEnv,npEnv = updateNode nodeOrd node env pEnv precVisits in
 
         Format.eprintf "Changed domain at %d:@." node.node_id;
         X.print stderr (extractDomain nEnv node);
@@ -112,7 +143,8 @@ module Make(X : Domain.DOMAIN) = struct
 
         let nWorklist = NodeSet.remove node
             (match X.equal precAbstract (fst (NodeMap.find node nEnv)) with
-            | true -> worklist
+            | true ->
+                worklist
             | false ->
                 (*
                 Format.eprintf "Domain changed: from @."; 
@@ -121,12 +153,15 @@ module Make(X : Domain.DOMAIN) = struct
                 X.print stderr (NodeMap.find node nEnv);
                 Format.eprintf "===@."; *)
                 NodeSet.union worklist (NodeSet.of_list
-                    (List.map (fun x -> x.arc_dst) node.node_out))
+                        (List.map (fun x -> x.arc_dst) node.node_out))
             ) in
-        iterate nodeOrd nEnv nWorklist
+        iterate nodeOrd nEnv npEnv nWorklist
             
     let run cfg =
         let nodeOrder = orderNodes cfg in
+        let botEnv = List.fold_left (fun cur node ->
+                NodeMap.add node (X.bottom,0) cur)
+            NodeMap.empty cfg.cfg_nodes in
 
         let rec processInit node env =
             if cfg.cfg_init_exit.node_id = node.node_id then
@@ -137,13 +172,15 @@ module Make(X : Domain.DOMAIN) = struct
                     raise (InvalidFlow node);
                 let outArc = List.hd node.node_out in
                 processInit outArc.arc_dst
-                    (updateNode nodeOrder outArc.arc_dst env 0)
+                    (fst (updateNode nodeOrder outArc.arc_dst env botEnv 0))
             end
         in
         
-        let startEnv = List.fold_left (fun cur node ->
-                NodeMap.add node (*(X.init cfg.cfg_vars)*) (X.bottom,0) cur)
-            NodeMap.empty cfg.cfg_nodes in
+(*        let startEnv = List.fold_left (fun cur node ->
+                NodeMap.add node (X.init cfg.cfg_vars, 0) cur)
+            NodeMap.empty cfg.cfg_nodes in *)
+        let startEnv = NodeMap.add cfg.cfg_init_entry
+            (X.init cfg.cfg_vars,0) botEnv in
 
         (* Environment after global initializations. *)
         let postinitEnv = processInit (cfg.cfg_init_entry) startEnv in
@@ -162,5 +199,5 @@ module Make(X : Domain.DOMAIN) = struct
         let startWL = NodeSet.of_list
             (List.map (fun x -> x.arc_dst) entryNode.node_out) in
 
-        iterate nodeOrder preiterEnv startWL
+        iterate nodeOrder preiterEnv botEnv startWL
 end

@@ -103,6 +103,7 @@ let join a b =
     SiStSet.union a b
 
 let widen a b = join a b
+let narrow a b = a
 
 let subset a b =
     SiStSet.subset a b

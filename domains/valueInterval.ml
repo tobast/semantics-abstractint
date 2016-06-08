@@ -246,6 +246,12 @@ let widen d1 d2 = let out = match (d1,d2) with
     printerr out ;
     Printf.eprintf "\n";
     out
+    
+let narrow d1 d2 = match d1,d2 with
+| Bottom,x | x,Bottom -> x
+| Interv(l1,u1), Interv(l2,u2) ->
+    Interv((if l1 = MInf then l2 else l1),
+        (if u1 = PInf then u2 else u1))
 
 let subset d1 d2 = match (d1,d2) with
 | Bottom, _ -> true

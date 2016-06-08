@@ -102,6 +102,8 @@ let meet v1 v2 = match v1,v2 with
 
 let widen v1 v2 = join v1 v2
 
+let narrow v1 _ = v1
+
 let subset d1 d2 = match d1,d2 with
 | Bottom,_ | _,Top -> true
 | Top,_ | _,Bottom -> false
