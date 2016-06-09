@@ -8,17 +8,29 @@ open Cfg
 
 module type S = sig
     type domType
+    
+    type assertFail = {
+        assert_pos : Abstract_syntax_tree.position ;
+        assert_expr : Cfg.bool_expr ;
+        assert_dom : domType
+    }
 
     exception InvalidFlow of Cfg.node
     exception InternalError of string
     exception NoMainFunc
     exception NotImplemented
 
-    val run : Cfg.cfg -> (domType*int) NodeMap.t
+    val run : Cfg.cfg -> (domType*int) NodeMap.t * assertFail list
+    val printAssertFailed : out_channel -> assertFail -> unit
 end
 
 module Make(X : Domain.DOMAIN) = struct
     type domType = X.t
+    type assertFail = {
+        assert_pos : Abstract_syntax_tree.position ;
+        assert_expr : Cfg.bool_expr ;
+        assert_dom : domType
+    }
     
     type nodeOrdering = {
         nodePos : int ;
@@ -71,7 +83,7 @@ module Make(X : Domain.DOMAIN) = struct
     | CFG_skip _ -> dom
     | CFG_assign(v,expr) -> X.assign dom v expr
     | CFG_guard(expr) -> X.guard dom expr
-    | CFG_assert(expr) -> dom (*TODO*)
+    | CFG_assert(expr) -> dom (* This is not doing anything, only checks. *)
     | CFG_call(func) -> raise NotImplemented
     
     let extractNodeOrder ord node =
@@ -83,9 +95,8 @@ module Make(X : Domain.DOMAIN) = struct
         let fromOrder = extractNodeOrder nodeOrder fromNode in
         let cOrder = extractNodeOrder nodeOrder cNode in
         if shouldWiden fromOrder cOrder then
-            if X.subset dom prevDom then (
-                Format.eprintf "NARROWING.@." ;
-                X.narrow prevDom dom )
+            if X.subset dom prevDom then
+                X.narrow prevDom dom
             else
                 X.widen prevDom dom
         else
@@ -136,9 +147,10 @@ module Make(X : Domain.DOMAIN) = struct
         let precAbstract = extractDomain pEnv node in
         let nEnv,npEnv = updateNode nodeOrd node env pEnv precVisits in
 
+		(*
         Format.eprintf "Changed domain at %d:@." node.node_id;
         X.print stderr (extractDomain nEnv node);
-        Format.eprintf "@."; 
+        Format.eprintf "@."; *)
 
         let nWorklist = NodeSet.remove node
             (match X.equal precAbstract (fst (NodeMap.find node npEnv)),
@@ -156,6 +168,22 @@ module Make(X : Domain.DOMAIN) = struct
                         (List.map (fun x -> x.arc_dst) node.node_out))
             ) in
         iterate nodeOrd nEnv npEnv (NodeSet.remove node once) nWorklist
+        
+    let getAssertFails cfg dom =
+        List.fold_left (fun cur arc -> match arc.arc_inst with
+            | CFG_assert(expr) ->
+                let cDom = extractDomain dom arc.arc_src in
+                let gDom = X.guard cDom
+                    (CFG_bool_unary(Abstract_syntax_tree.AST_NOT,expr)) in
+                if X.is_bottom gDom then
+					cur
+                else
+                    {
+                        assert_pos = arc.arc_src.node_pos ;
+                        assert_expr = expr ;
+                        assert_dom = gDom
+                    } :: cur
+            | _ -> cur) [] cfg.cfg_arcs
             
     let run cfg =
         let nodeOrder = orderNodes cfg in
@@ -199,6 +227,17 @@ module Make(X : Domain.DOMAIN) = struct
         let startWL = NodeSet.of_list
             (List.map (fun x -> x.arc_dst) entryNode.node_out) in
 
-        iterate nodeOrder preiterEnv botEnv
-            (NodeSet.of_list cfg.cfg_nodes) startWL
+        let outDom = iterate nodeOrder preiterEnv botEnv
+            (NodeSet.of_list cfg.cfg_nodes) startWL in
+        
+        outDom, getAssertFails cfg outDom
+        
+    let printAssertFailed ch asser =
+        Printf.fprintf ch "ALERT: Assert ";
+		Cfg_printer.print_bool_expr ch asser.assert_expr ;
+		Printf.fprintf ch " at %s may have failed, \
+			with domain\n"
+            (Cfg_printer.string_of_position asser.assert_pos) ;
+        X.print ch asser.assert_dom ;
+        Printf.fprintf ch "\n"
 end

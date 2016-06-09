@@ -233,19 +233,11 @@ let print chan dom =
                 (string_of_bound a) (string_of_bound b))
 
 
-let widen d1 d2 = let out = match (d1,d2) with
+let widen d1 d2 = match (d1,d2) with
 | x, Bottom | Bottom, x -> x
 | Interv(a,b), Interv(c,d) ->
         Interv( (if a <=@ c then a else MInf) ,
             (if d <=@ b then b else PInf) )
-    in
-    let printerr = print stderr in
-    Printf.eprintf "Widened ";
-    printerr d1 ; printerr d2 ;
-    Printf.eprintf " to ";
-    printerr out ;
-    Printf.eprintf "\n";
-    out
     
 let narrow d1 d2 = match d1,d2 with
 | Bottom,x | x,Bottom -> x

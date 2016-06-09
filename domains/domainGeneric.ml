@@ -111,7 +111,10 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
                         true))
             d2 true
 
-    let is_bottom = VarMap.is_empty
+    let is_bottom dom =
+        VarMap.is_empty dom || (VarMap.fold
+                (fun _ v cur -> if ValueX.is_bottom v then true else cur)
+                dom false)
 
     let print chan dom =
         VarMap.iter (fun k v ->

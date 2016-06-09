@@ -52,6 +52,24 @@ let printDomain printer dom =
             (snd v);
         printer stdout (fst v);
         Format.printf "@.") dom
+        
+let printAsserts printer = function
+| [] -> ()
+| asserts ->
+    List.iter (printer stdout) asserts
+    
+
+let printResult printer assertPrinter (dom,asserts) =
+    printAsserts assertPrinter asserts ;
+    printDomain printer dom ;
+    if asserts <> [] then
+        let assertLen = List.length asserts in
+        Printf.printf "==============================\n\
+            ALERT: %d assertion%s may have failed! (See above)\n\
+            ==============================\n"
+            assertLen (if assertLen=1 then "" else "s")
+    else
+        Printf.printf "Every assertion is correct.\n"
 
 (** Processes the given file using the given options *)
 let process filename =
@@ -62,13 +80,16 @@ let process filename =
     DomSet.iter (fun dom -> (match dom with
             | DomIntervals ->
                 let res = IntervalIterator.run cfg in
-                printDomain DomainInterval.print res
+                printResult DomainInterval.print
+                    IntervalIterator.printAssertFailed res
             | DomConcrete ->
                 let res = ConcreteIterator.run cfg in
-                printDomain ConcreteDomain.print res
+                printResult ConcreteDomain.print
+                    ConcreteIterator.printAssertFailed res
             | DomConstants ->
                 let res = ConstantIterator.run cfg in
-                printDomain DomainConstant.print res
+                printResult DomainConstant.print
+                    ConstantIterator.printAssertFailed res
         )) !domains
                 
 
