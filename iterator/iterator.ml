@@ -123,7 +123,7 @@ module Make(X : Domain.DOMAIN) = struct
         NodeMap.add node (nDom, (curVisits+1)) env,
             NodeMap.add node (pDom, curVisits) pEnv
         
-    let rec iterate nodeOrd env pEnv worklist =
+    let rec iterate nodeOrd env pEnv once worklist =
         match NodeSet.cardinal worklist with
     | 0 -> env
     | _ ->
@@ -132,9 +132,8 @@ module Make(X : Domain.DOMAIN) = struct
         Format.eprintf "At %d: worklist = @?" node.node_id;
         NodeSet.iter (fun x -> Format.eprintf "%d " x.node_id) worklist;
         Format.eprintf "@."; *)
-        let precAbstract,precVisits = (try NodeMap.find node env with
-                Not_found -> raise (InternalError
-                    "Node not found in environment.")) in
+        let precVisits = extractVisits env node in
+        let precAbstract = extractDomain pEnv node in
         let nEnv,npEnv = updateNode nodeOrd node env pEnv precVisits in
 
         Format.eprintf "Changed domain at %d:@." node.node_id;
@@ -142,10 +141,11 @@ module Make(X : Domain.DOMAIN) = struct
         Format.eprintf "@."; 
 
         let nWorklist = NodeSet.remove node
-            (match X.equal precAbstract (fst (NodeMap.find node nEnv)) with
-            | true ->
+            (match X.equal precAbstract (fst (NodeMap.find node npEnv)),
+                    NodeSet.mem node once with
+            | true,false ->
                 worklist
-            | false ->
+            | false,_ | true,true ->
                 (*
                 Format.eprintf "Domain changed: from @."; 
                 X.print stderr precAbstract;
@@ -155,7 +155,7 @@ module Make(X : Domain.DOMAIN) = struct
                 NodeSet.union worklist (NodeSet.of_list
                         (List.map (fun x -> x.arc_dst) node.node_out))
             ) in
-        iterate nodeOrd nEnv npEnv nWorklist
+        iterate nodeOrd nEnv npEnv (NodeSet.remove node once) nWorklist
             
     let run cfg =
         let nodeOrder = orderNodes cfg in
@@ -199,5 +199,6 @@ module Make(X : Domain.DOMAIN) = struct
         let startWL = NodeSet.of_list
             (List.map (fun x -> x.arc_dst) entryNode.node_out) in
 
-        iterate nodeOrder preiterEnv botEnv startWL
+        iterate nodeOrder preiterEnv botEnv
+            (NodeSet.of_list cfg.cfg_nodes) startWL
 end
