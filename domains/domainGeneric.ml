@@ -86,7 +86,6 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
         | CFG_bool_rand ->
             bottom
         in
-        
         guardBool (Helpers.notElim expr)
         
     let widen =

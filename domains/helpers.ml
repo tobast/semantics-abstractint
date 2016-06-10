@@ -34,7 +34,7 @@ let notElim =
                 | AST_LESS -> AST_GREATER_EQUAL
                 | AST_LESS_EQUAL -> AST_GREATER
                 | AST_GREATER -> AST_LESS_EQUAL
-                | AST_GREATER_EQUAL -> AST_GREATER_EQUAL
+                | AST_GREATER_EQUAL -> AST_LESS
                 ), e1, e2)
         else
             CFG_compare(cmp, e1, e2)

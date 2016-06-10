@@ -130,6 +130,12 @@ let string_of_bound  = function
 | PInf -> "+∞"
 | Int z -> (Z.to_string z)
 
+let print chan dom =
+    (match dom with
+    | Bottom -> Printf.fprintf chan "⊥"
+    | Interv(a,b) -> Printf.fprintf chan "[%s, %s]"
+                (string_of_bound a) (string_of_bound b))
+
 
 let top = Interv(MInf,PInf)
 
@@ -227,13 +233,6 @@ let bwd_binary d1 d2 op r = match d1,d2,r with
 	| AST_MODULO -> d1,d2
 )
     
-let print chan dom =
-    (match dom with
-    | Bottom -> Printf.fprintf chan "⊥"
-    | Interv(a,b) -> Printf.fprintf chan "[%s, %s]"
-                (string_of_bound a) (string_of_bound b))
-
-
 let widen d1 d2 = match (d1,d2) with
 | x, Bottom | Bottom, x -> x
 | Interv(a,b), Interv(c,d) ->
