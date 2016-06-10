@@ -79,12 +79,15 @@ module Make(X : Domain.DOMAIN) = struct
         try snd (NodeMap.find node env) with
             Not_found -> raise (InternalError "Node not found in env.")
 
-    let domOfArc arc dom = match arc.arc_inst with
+    let domOfFunc dom func =
+        extractDomain dom func.func_exit
+
+    let domOfArc arc dom fullDom = match arc.arc_inst with
     | CFG_skip _ -> dom
     | CFG_assign(v,expr) -> X.assign dom v expr
     | CFG_guard(expr) -> X.guard dom expr
     | CFG_assert(expr) -> dom (* This is not doing anything, only checks. *)
-    | CFG_call(func) -> raise NotImplemented
+    | CFG_call(func) -> domOfFunc fullDom func
     
     let extractNodeOrder ord node =
         (try NodeMap.find node ord
@@ -101,40 +104,38 @@ module Make(X : Domain.DOMAIN) = struct
                 X.widen prevDom dom
         else
             dom
-
-            (*
-    let doNarrow nodeOrder node env pEnv =
-        let cOrder = extractNodeOrder nodeOrder node in
-        let nDom =
-            List.fold_left (fun cur arc ->
-                let fromNode = arc.arc_src in
-                let fromOrder = extractNodeOrder nodeOrder fromNode in
-                
-                if shouldWiden fromOrder cOrder then
-                    X.join cur (X.narrow
-                        (domOfArc arc (extractDomain pEnv arc.arc_src))
-                        (domOfArc arc (extractDomain env arc.arc_src)))
-                else
-                    X.join cur (domOfArc arc (extractDomain env arc.arc_src))
-                )
-            X.bottom node.node_in in
-        NodeMap.add node (nDom, (extractVisits env node)) env
-*)
             
-    let updateNode nodeOrd node env pEnv curVisits =
+    let getFctFilter filt cfg node =
+        List.fold_left (fun cur fct ->
+                if filt fct node then 
+                    Some fct
+                else
+                    cur) None cfg.cfg_funcs
+    let getFctEntry =
+        getFctFilter (fun fct node -> fct.func_entry.node_id = node.node_id)
+    let getFctExit =
+        getFctFilter (fun fct node -> fct.func_exit.node_id = node.node_id)
+
+    let updateNode cfg nodeOrd node env pEnv curVisits =
         let pDom = extractDomain env node in
         let nDom = List.fold_left (fun cur arc -> 
                 let nVal = 
                     (doWiden nodeOrd node arc.arc_src
-                        (domOfArc arc (extractDomain pEnv arc.arc_src))
-                        (domOfArc arc (extractDomain env arc.arc_src))) in
+                        (domOfArc arc (extractDomain pEnv arc.arc_src) pEnv)
+                        (domOfArc arc (extractDomain env arc.arc_src) env)) in
                 X.join cur nVal)
-            X.bottom node.node_in in
+            X.bottom
+            (match getFctEntry cfg node with
+            | None -> node.node_in
+            | Some fct ->
+                List.map (fun x -> { x with arc_inst = (CFG_skip "call") })
+                    fct.func_calls)
+        in
             
         NodeMap.add node (nDom, (curVisits+1)) env,
             NodeMap.add node (pDom, curVisits) pEnv
         
-    let rec iterate nodeOrd env pEnv once worklist =
+    let rec iterate cfg nodeOrd env pEnv once worklist =
         match NodeSet.cardinal worklist with
     | 0 -> env
     | _ ->
@@ -145,12 +146,16 @@ module Make(X : Domain.DOMAIN) = struct
         Format.eprintf "@."; *)
         let precVisits = extractVisits env node in
         let precAbstract = extractDomain pEnv node in
-        let nEnv,npEnv = updateNode nodeOrd node env pEnv precVisits in
+        let nEnv,npEnv = updateNode cfg nodeOrd node env pEnv precVisits in
 
 		(*
         Format.eprintf "Changed domain at %d:@." node.node_id;
         X.print stderr (extractDomain nEnv node);
         Format.eprintf "@."; *)
+        
+        let arcUpdateNode arc = (match arc.arc_inst with
+        | CFG_call(fct) -> fct.func_entry
+        | _ -> arc.arc_dst) in
 
         let nWorklist = NodeSet.remove node
             (match X.equal precAbstract (fst (NodeMap.find node npEnv)),
@@ -165,9 +170,12 @@ module Make(X : Domain.DOMAIN) = struct
                 X.print stderr (NodeMap.find node nEnv);
                 Format.eprintf "===@."; *)
                 NodeSet.union worklist (NodeSet.of_list
-                        (List.map (fun x -> x.arc_dst) node.node_out))
+                    (match getFctExit cfg node with
+                    | None -> List.map arcUpdateNode node.node_out
+                    | Some fct ->
+                            List.map (fun x -> x.arc_dst) fct.func_calls))
             ) in
-        iterate nodeOrd nEnv npEnv (NodeSet.remove node once) nWorklist
+        iterate cfg nodeOrd nEnv npEnv (NodeSet.remove node once) nWorklist
         
     let getAssertFails cfg dom =
         List.fold_left (fun cur arc -> match arc.arc_inst with
@@ -200,7 +208,8 @@ module Make(X : Domain.DOMAIN) = struct
                     raise (InvalidFlow node);
                 let outArc = List.hd node.node_out in
                 processInit outArc.arc_dst
-                    (fst (updateNode nodeOrder outArc.arc_dst env botEnv 0))
+                    (fst (updateNode cfg nodeOrder outArc.arc_dst
+                        env botEnv 0))
             end
         in
         
@@ -227,7 +236,7 @@ module Make(X : Domain.DOMAIN) = struct
         let startWL = NodeSet.of_list
             (List.map (fun x -> x.arc_dst) entryNode.node_out) in
 
-        let outDom = iterate nodeOrder preiterEnv botEnv
+        let outDom = iterate cfg nodeOrder preiterEnv botEnv
             (NodeSet.of_list cfg.cfg_nodes) startWL in
         
         outDom, getAssertFails cfg outDom

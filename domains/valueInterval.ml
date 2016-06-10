@@ -10,7 +10,7 @@ exception ZArithFail
 
 let boundNeg = function
 | MInf -> PInf
-| Int z -> Int z
+| Int z -> Int (Z.neg z)
 | PInf -> MInf
 
 let boundAbs = function
@@ -124,6 +124,12 @@ let listMin l =
     | l -> get (List.hd l) (List.tl l))
 let listMax l =
     boundNeg (listMin (List.map boundNeg l))
+    
+let string_of_bound  = function 
+| MInf -> "-∞"
+| PInf -> "+∞"
+| Int z -> (Z.to_string z)
+
 
 let top = Interv(MInf,PInf)
 
@@ -221,11 +227,6 @@ let bwd_binary d1 d2 op r = match d1,d2,r with
 	| AST_MODULO -> d1,d2
 )
     
-let string_of_bound  = function 
-| MInf -> "-∞"
-| PInf -> "+∞"
-| Int z -> (Z.to_string z)
-
 let print chan dom =
     (match dom with
     | Bottom -> Printf.fprintf chan "⊥"
