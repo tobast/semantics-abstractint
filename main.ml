@@ -83,6 +83,9 @@ let printResult cfg printer assertPrinter (dom,asserts) =
     else
         Printf.printf "No alarm. Every assertion is correct.\n"
 
+let printEmph s =
+    Format.printf "\n# %s #\n%s\n@." s (String.make (String.length s + 4) '#')
+
 (** Processes the given file using the given options *)
 let process filename =
     let prog = File_parser.parse_file filename in
@@ -91,14 +94,17 @@ let process filename =
         Cfg_printer.output_dot "cfg.dot" cfg;
     DomSet.iter (fun dom -> (match dom with
             | DomIntervals ->
+                printEmph "INTERVAL"; 
                 let res = IntervalIterator.run cfg in
                 printResult cfg DomainInterval.print
                     IntervalIterator.printAlarm res
             | DomConcrete ->
+                printEmph "CONCRETE";
                 let res = ConcreteIterator.run cfg in
                 printResult cfg ConcreteDomain.print
                     ConcreteIterator.printAlarm res
             | DomConstants ->
+                printEmph "CONSTANT";
                 let res = ConstantIterator.run cfg in
                 printResult cfg DomainConstant.print
                     ConstantIterator.printAlarm res

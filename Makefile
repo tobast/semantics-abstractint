@@ -26,9 +26,17 @@ buildanyway_: ;
 
 %.d.byte: %.ml buildanyway_
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) -pkgs $(PACKAGES) $@
+	
+test: examples $(TARGET)
+	for test in examples/*.c; do \
+		bname="$$(dirname $$test)/$$(basename $$test '.c')"; \
+		./$(TARGET) -interval $$test > $$bname.interv.out; \
+		./$(TARGET) -constant $$test > $$bname.const.out; \
+	done
 
 clean:
 	$(OCAMLBUILD) -clean
+	rm examples/*.out
 
 dot: cfg.dot
 	dot -Tpng $< | feh -
