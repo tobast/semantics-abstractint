@@ -25,3 +25,10 @@ cfg.dot
 *.swp
 *.swo
 *.out
+*.pdf
+*.tgz
+*.aux
+*.bbl
+*.blg
+*.log
+*.bib

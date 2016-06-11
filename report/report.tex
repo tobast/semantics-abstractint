@@ -1,0 +1,145 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[francais]{babel} %% FRENCH
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+
+% Custom packages
+\usepackage{my_listings}
+\usepackage{my_hyperref}
+\usepackage{math}
+
+\author{Théophile \textsc{Bastian}}
+\title{Projet d'interprétation abstraite}
+\date{\today}
+
+\begin{filecontents}{reportbib.bib}
+@inproceedings{cousotWiden,
+  title={Comparing the Galois connection and widening/narrowing approaches to abstract interpretation},
+  author={Cousot, Patrick and Cousot, Radhia},
+  booktitle={Programming Language Implementation and Logic Programming},
+  pages={269--295},
+  year={1992},
+  organization={Springer}
+}
+\end{filecontents}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+	Au cours de ce projet, j'ai implémenté en OCaml un analyseur statique
+	par interprétation abstraite sur les domaines des constantes et
+	des intervalles. Celui-ci permet une analyse basique de fonctions
+	(par sauts au point d'entrée et du point de sortie), supporte le
+	\textit{narrowing} (à une seule passe, ce qui est suffisant pour
+	les intervalles) et est capable de lever des alertes basiques.
+\end{abstract}
+
+\section{Fonctionnalités}
+Dans tous les cas rencontrés, l'analyseur est toujours \emph{sûr}. Celui-ci
+permet une analyse sur les domaines des constantes et des intervalles, supporte
+l'analyse inter-procédurale ainsi que le \textit{narrowing}.
+
+En pratique, l'opérateur de narrowing est implémenté (autrement que
+trivialement) uniquement sur le domaine des intervalles. L'opérateur utilisé
+est tiré de~\cite{cousotWiden} et défini par
+\[
+	\Delta : [a,b], [c,d] \mapsto [
+		\begin{cases}c&,\text{~si } a = -\infty\\
+			a&,\text{~sinon} \end{cases},
+		\begin{cases}d&,\text{~si } b = +\infty\\
+			b&,\text{~sinon} \end{cases}
+		]
+\]		
+
+\subsection{Utilisation}
+
+La compilation (\lstbash{make}) produira un fichier \texttt{main.native}.
+Celui-ci prend plusieurs options~:
+\begin{itemize}
+	\item \lstbash{-constant}~: domaine des constantes~;
+	\item \lstbash{-interval}~: domaine des intervalles~;
+	\item \lstbash{-concrete}~: domaine concret, utilisé au début, qui n'est
+		plus vraiment à jour et n'est absolument pas complet ni utilisable~;
+	\item \lstbash{-dot}~: génère un fichier \texttt{.dot} du fichier analysé.
+		Le graphe de flot de contrôle généré peut être affiché avec un
+		\lstbash{make dot}.
+\end{itemize}
+
+Plusieurs domaines peuvent être demandés à la fois. Pour
+(re)générer les fichiers \og{}\texttt{.out}~\fg{} % chktex 36
+accompagnant les fichiers de test, il est possible d'utiliser
+\lstc{make test}.
+
+\subsection{Fonctionnement}
+
+L'analyseur marche comme conseillé dans la plupart des cas. L'itérateur utilisé
+fonctionne par \textit{worklist}. Toutefois, celle-ci ayant posé quelques
+problèmes à cause du \textit{narrowing}/\textit{widening} en interaction
+avec les valeurs initiales des domaines, j'ai été forcé de faire deux passes
+d'itérations (\ie, une fois la worklist vide, on la relance à partir du point
+d'entrée). Ceci ne ralentit pas significativement l'analyseur.
+
+Je n'ai pas pu interfacer mon analyseur avec Apron, car j'ai modifié la
+signature \lstocaml{DOMAIN} pour y ajouter des fonctionnalités.
+
+\section{Analyse des exemples}
+Tous les exemples se trouvent dans \texttt{examples/} et sont accompagnés
+d'un fichier \texttt{.interv.out}, la sortie de l'analyse sur les intervalles,
+et \texttt{.const.out}, sur le domaine des constantes.
+
+\subsection{\texttt{bwd\_expr.c}}
+Cet exemple sert à vérifier les opérateurs \og{}backward~\fg{}d'un domaine de
+valeurs (\lstocaml{bwd\_unary} et \lstocaml{bwd\_binary}). Le succès de
+l'assertion montre que ces opérateurs marchent (du moins pour $+$).
+
+\subsection{\texttt{call.c}}
+Cet exemple teste les appels de fonction, grâce à une fonction \lstc{add}
+qui additionne et renvoie ses deux paramètres. On lui demande $2+3$ et $3+4$,
+ainsi l'intervalle de retour est $[5, 7]$, d'où le fait que l'intervalle
+final ne soit pas réduit à une constante.
+
+\subsection{\texttt{call\_cfgfail.c}}
+Cet exemple démontre l'existence d'une erreur dans le CFG (que je n'ai pas
+cherché à réparer)~: s'il existe des variables portant le même nom, locales
+dans deux fonctions différentes, le CFG ne choisit pas nécessairement la
+bonne\ldots
+
+\subsection{\texttt{constants.c}}
+Ce test a été prévu pour tester le domaine des constantes
+essentiellement (suite d'opérations, sans boucles ou conditions~: une variable
+a toujours une valeur entière constante).
+
+L'analyse sur les constantes produit bien le résultat voulu (comme en
+témoigne l'absence d'alertes par rapport à l'assertion finale). Toutefois,
+il est intéressant de noter qu'une analyse sur le domaine des intervalles,
+bien que produisant le bon résultat, lève une alerte pour l'exception~:
+en effet, $\neg ($\lstc{x==3}$) \equiv$ \lstc{x!=3}, ce qui donne $\top$
+dans le domaine des intervalles.
+
+\subsection{\texttt{narrow.c}}
+Cet exemple teste le \textit{narrowing}~: sans celui-ci, sa sortie indiquerait
+$i \in [0, +\infty]$ et $a \in [0, +\infty]$, mais l'application du
+narrowing permet de se ramener aux meilleurs intervalles possibles.
+
+\subsection{\texttt{relational.c}}
+Cet exemple est à la fois négatif et positif~: d'un côté, il montre
+les limites du domaine des intervalles, qui n'est pas relationnel~;
+d'un autre, il montre que l'analyseur sait détecter les divisions par zéro.
+
+\subsection{\texttt{syra.c}}
+Cet exemple est un test plus général. Il calcule la suite de Syracuse,
+et vérifie que si la suite passe en dessous de $2$ à un moment donné, alors
+sa valeur est $1$. Cela montre également que l'analyseur ne se soucie pas de
+la terminaison.
+
+\bibliography{reportbib}{}
+\bibliographystyle{plain}
+
+\end{document}
+

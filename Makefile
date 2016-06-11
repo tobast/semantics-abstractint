@@ -5,6 +5,7 @@ OCAMLBUILD_FLAGS=
 PACKAGES=zarith
 
 TARGET=main.native
+TAR=abstract_interpretation-bastian_theophile.tgz
 TARGET_DEBUG=main.d.byte
 
 .PHONY: buildanyway_
@@ -33,10 +34,18 @@ test: examples $(TARGET)
 		./$(TARGET) -interval $$test > $$bname.interv.out; \
 		./$(TARGET) -constant $$test > $$bname.const.out; \
 	done
+	
+tar: test clean
+	tar czf $(TAR) --transform "flags=r;s|^|$$(basename $(TAR) .tgz)/|" \
+	   	**/*.{ml,mli,mll,mly} main.ml examples/*.{c,out} report/report.pdf \
+		Makefile _tags
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm examples/*.out
+	rm -f $(TAR)
+
+fullclean: clean
+	rm -f examples/*.out
 
 dot: cfg.dot
 	dot -Tpng $< | feh -
