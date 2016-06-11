@@ -77,11 +77,11 @@ let printResult cfg printer assertPrinter (dom,asserts) =
     if asserts <> [] then
         let assertLen = List.length asserts in
         Printf.printf "==============================\n\
-            ALERT: %d assertion%s may have failed! (See above)\n\
+            ALERT: %d alam%s raised! (See above)\n\
             ==============================\n"
-            assertLen (if assertLen=1 then "" else "s")
+            assertLen (if assertLen=1 then " was" else "s were")
     else
-        Printf.printf "Every assertion is correct.\n"
+        Printf.printf "No alarm. Every assertion is correct.\n"
 
 (** Processes the given file using the given options *)
 let process filename =
@@ -93,15 +93,15 @@ let process filename =
             | DomIntervals ->
                 let res = IntervalIterator.run cfg in
                 printResult cfg DomainInterval.print
-                    IntervalIterator.printAssertFailed res
+                    IntervalIterator.printAlarm res
             | DomConcrete ->
                 let res = ConcreteIterator.run cfg in
                 printResult cfg ConcreteDomain.print
-                    ConcreteIterator.printAssertFailed res
+                    ConcreteIterator.printAlarm res
             | DomConstants ->
                 let res = ConstantIterator.run cfg in
                 printResult cfg DomainConstant.print
-                    ConstantIterator.printAssertFailed res
+                    ConstantIterator.printAlarm res
         )) !domains
                 
 

@@ -9,10 +9,12 @@ module type S = sig
     type domType
     (** A type representing the abstract domain. *)
     
-    type assertFail = {
-        assert_pos : Abstract_syntax_tree.position ;
-        assert_expr : Cfg.bool_expr ;
-        assert_dom : domType
+    type alarmExpr = BoolExpr of Cfg.bool_expr | IntExpr of Cfg.int_expr
+    type alarm = {
+        alarm_pos : Abstract_syntax_tree.position ;
+        alarm_expr: alarmExpr ;
+        alarm_dom : domType ;
+        alarm_msg : string
     }
 
     exception InvalidFlow of Cfg.node
@@ -27,12 +29,12 @@ module type S = sig
     exception NotImplemented
     (** Thrown when an unimplemented feature is required. *)
 
-    val run : Cfg.cfg -> (domType*int) Cfg.NodeMap.t * assertFail list
+    val run : Cfg.cfg -> (domType*int) Cfg.NodeMap.t * alarm list
     (** Iterates on the program until a fixpoint is reached,
      * returning for each control point a pair of the invariant gathered
      * and the number of times this CP was visited. *)
     
-    val printAssertFailed : out_channel -> assertFail -> unit
+    val printAlarm : out_channel -> alarm -> unit
     (** Prints an alert for the given failed assertion on the given channel. *)
 end
 

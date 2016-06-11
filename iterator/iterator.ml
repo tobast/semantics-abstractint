@@ -9,10 +9,12 @@ open Cfg
 module type S = sig
     type domType
     
-    type assertFail = {
-        assert_pos : Abstract_syntax_tree.position ;
-        assert_expr : Cfg.bool_expr ;
-        assert_dom : domType
+    type alarmExpr = BoolExpr of Cfg.bool_expr | IntExpr of Cfg.int_expr
+    type alarm = {
+        alarm_pos : Abstract_syntax_tree.position ;
+        alarm_expr: alarmExpr ;
+        alarm_dom : domType ;
+        alarm_msg : string
     }
 
     exception InvalidFlow of Cfg.node
@@ -20,16 +22,18 @@ module type S = sig
     exception NoMainFunc
     exception NotImplemented
 
-    val run : Cfg.cfg -> (domType*int) NodeMap.t * assertFail list
-    val printAssertFailed : out_channel -> assertFail -> unit
+    val run : Cfg.cfg -> (domType*int) NodeMap.t * alarm list
+    val printAlarm : out_channel -> alarm -> unit
 end
 
 module Make(X : Domain.DOMAIN) = struct
     type domType = X.t
-    type assertFail = {
-        assert_pos : Abstract_syntax_tree.position ;
-        assert_expr : Cfg.bool_expr ;
-        assert_dom : domType
+    type alarmExpr = BoolExpr of Cfg.bool_expr | IntExpr of Cfg.int_expr
+    type alarm = {
+        alarm_pos : Abstract_syntax_tree.position ;
+        alarm_expr: alarmExpr ;
+        alarm_dom : domType ;
+        alarm_msg : string
     }
     
     type nodeOrdering = {
@@ -134,6 +138,7 @@ module Make(X : Domain.DOMAIN) = struct
         NodeSet.iter (fun x -> Format.eprintf "%d " x.node_id) worklist;
         Format.eprintf "@."; *)
         let precVisits = extractVisits env node in
+        let abstract = extractDomain env node in
         let precAbstract = extractDomain pEnv node in
         let nEnv,npEnv = updateNode cfg nodeOrd node env pEnv precVisits in
 
@@ -147,7 +152,8 @@ module Make(X : Domain.DOMAIN) = struct
         | _ -> arc.arc_dst) in
 
         let nWorklist = NodeSet.remove node
-            (match X.equal precAbstract (fst (NodeMap.find node npEnv)),
+            (match X.equal precAbstract (extractDomain npEnv node) &&
+                   X.equal abstract (extractDomain nEnv node),
                     NodeSet.mem node once with
             | true,false -> worklist
             | false,_ | true,true ->
@@ -175,11 +181,18 @@ module Make(X : Domain.DOMAIN) = struct
 					cur
                 else
                     {
-                        assert_pos = arc.arc_src.node_pos ;
-                        assert_expr = expr ;
-                        assert_dom = gDom
+                        alarm_msg = "Assert failure" ;
+                        alarm_pos = arc.arc_src.node_pos ;
+                        alarm_expr = BoolExpr (expr) ;
+                        alarm_dom = gDom
                     } :: cur
             | _ -> cur) [] cfg.cfg_arcs
+            
+    let getCodeAlarms cfg dom =
+        [] (*TODO*)
+            
+    let getAlarms cfg outDom =
+        (getAssertFails cfg outDom) @ (getCodeAlarms cfg outDom)
             
     let run cfg =
         let nodeOrder = orderNodes cfg in
@@ -229,14 +242,17 @@ module Make(X : Domain.DOMAIN) = struct
         let outDom = iterate cfg nodeOrder intDom preiterEnv
             (NodeSet.of_list cfg.cfg_nodes) startWL in
         
-        outDom, getAssertFails cfg outDom
+        outDom, getAlarms cfg outDom
         
-    let printAssertFailed ch asser =
-        Printf.fprintf ch "ALERT: Assert ";
-		Cfg_printer.print_bool_expr ch asser.assert_expr ;
-		Printf.fprintf ch " at %s may have failed, \
-			with domain\n"
-            (Cfg_printer.string_of_position asser.assert_pos) ;
-        X.print [] ch asser.assert_dom ;
+    let printAlarm ch alarm =
+        Printf.fprintf ch "ALERT: %s in " alarm.alarm_msg ;
+        (match alarm.alarm_expr with
+        | BoolExpr(bex) ->
+    		Cfg_printer.print_bool_expr ch bex
+        | IntExpr(iex) ->
+            Cfg_printer.print_int_expr ch iex);
+		Printf.fprintf ch " at %s, with domain\n"
+            (Cfg_printer.string_of_position alarm.alarm_pos) ;
+        X.print [] ch alarm.alarm_dom ;
         Printf.fprintf ch "\n"
 end
