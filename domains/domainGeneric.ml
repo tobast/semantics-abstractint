@@ -97,6 +97,31 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
         in
         guardBool (Helpers.notElim expr)
         
+    let checkAlarm dom expr =
+        let rec doCheck exp = match exp with
+        | CFG_int_var _ | CFG_int_const _ | CFG_int_rand _ ->
+            [],evalIntExpr dom exp
+        | CFG_int_unary(op,exp) ->
+            let alarms,dom = doCheck exp in
+            alarms, ValueX.unary dom op
+        | CFG_int_binary(op,ex1,ex2) ->
+            let al1,dom1 = doCheck ex1
+            and al2,dom2 = doCheck ex2 in
+            let alarms = (match op with
+                | AST_DIVIDE | AST_MODULO ->
+                    let domZero = ValueX.const (Z.zero) in
+                    if ValueX.subset domZero dom2 then
+                        [ exp,
+                        (if op = AST_DIVIDE then "Division" else "Modulus")^
+                        " by zero" ]
+                    else
+                        []
+                | AST_PLUS | AST_MINUS | AST_MULTIPLY -> []
+                ) @ al1 @ al2 in
+            alarms, ValueX.binary dom1 dom2 op
+        in
+        fst @@ doCheck expr
+        
     let widen d1 d2 = bottomize @@ 
         VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None

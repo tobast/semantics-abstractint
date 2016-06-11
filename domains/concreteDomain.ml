@@ -30,6 +30,9 @@ let bottom = SiStSet.empty
 
 let is_bottom a =
     SiStSet.is_empty a
+    
+let checkAlarm dom expr =
+    [] (* Not implemented *)
 
 let rec evalExpr st = function
 | CFG_int_unary (op,ex) -> (match op with

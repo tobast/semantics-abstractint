@@ -189,7 +189,33 @@ module Make(X : Domain.DOMAIN) = struct
             | _ -> cur) [] cfg.cfg_arcs
             
     let getCodeAlarms cfg dom =
-        [] (*TODO*)
+        let crawlInt cDom loc expr=
+            List.map (fun (exp,msg) ->
+                    {
+                        alarm_msg = msg;
+                        alarm_pos = loc;
+                        alarm_expr= IntExpr exp;
+                        alarm_dom = cDom
+                    })
+                (X.checkAlarm cDom expr)
+        in
+        let rec crawlBool cDom loc = function
+        | CFG_bool_unary(_,e) -> crawlBool cDom loc e
+        | CFG_bool_binary(_,e1,e2) ->
+            (crawlBool cDom loc e1) @ (crawlBool cDom loc e2)
+        | CFG_compare(_,ie1,ie2) ->
+            (crawlInt cDom loc ie1) @ (crawlInt cDom loc ie2)
+        | CFG_bool_const _ | CFG_bool_rand -> []
+        in
+        List.fold_left (fun cur arc ->
+                let loc = arc.arc_src.node_pos in
+                let cDom = extractDomain dom arc.arc_src in
+                match arc.arc_inst with
+                | CFG_skip _ | CFG_call _ -> cur
+                | CFG_guard e | CFG_assert e -> (crawlBool cDom loc e) @ cur
+                | CFG_assign(_, e) -> (crawlInt cDom loc e) @ cur)
+            [] cfg.cfg_arcs
+                    
             
     let getAlarms cfg outDom =
         (getAssertFails cfg outDom) @ (getCodeAlarms cfg outDom)

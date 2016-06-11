@@ -77,7 +77,7 @@ let printResult cfg printer assertPrinter (dom,asserts) =
     if asserts <> [] then
         let assertLen = List.length asserts in
         Printf.printf "==============================\n\
-            ALERT: %d alam%s raised! (See above)\n\
+            ALERT: %d alert%s raised! (See above)\n\
             ==============================\n"
             assertLen (if assertLen=1 then " was" else "s were")
     else

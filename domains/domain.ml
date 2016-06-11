@@ -22,6 +22,11 @@ module type DOMAIN =
      *)
     type t
     
+    (* Checks for alarms that must be raised in the given expression,
+     * returning a list of (expression, problem description).
+     *)
+    val checkAlarm: t -> int_expr -> (int_expr*string) list
+    
     (* Checks whether two domains are equal. *)
     val equal: t -> t -> bool
 
