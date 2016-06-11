@@ -1,0 +1,37 @@
+ALERT: Assert failure in n(2) == 1 at examples/release/syra.c:12:1, with domain
+n(2): [1, 1]
+
+NODE 1 [examples/release/syra.c:1:0]: (took 1 iterations) [ENTRY POINT: main]
+n(2): [0, 0]
+
+NODE 2 [examples/release/syra.c:13:1]: (took 9 iterations) [EXIT POINT: main]
+return value (1): [0, 0]
+n(2): [1, 1]
+
+NODE 3 [examples/release/syra.c:3:1]: (took 2 iterations)
+n(2): [10, 1000]
+
+NODE 4 [examples/release/syra.c:4:1]: (took 18 iterations)
+n(2): [1, +∞]
+
+NODE 5 [examples/release/syra.c:12:1]: (took 13 iterations)
+n(2): [1, 1]
+
+NODE 6 [examples/release/syra.c:4:13]: (took 13 iterations)
+n(2): [2, +∞]
+
+NODE 7 [examples/release/syra.c:8:6]: (took 12 iterations)
+n(2): [2, +∞]
+
+NODE 8 [examples/release/syra.c:5:16]: (took 4 iterations)
+n(2): [2, +∞]
+
+NODE 9 [examples/release/syra.c:1:0]: (took 0 iterations)
+n(2): [0, 0]
+
+NODE 10 [examples/release/syra.c:14:0]: (took 1 iterations)
+n(2): [0, 0]
+
+==============================
+ALERT: 1 alert was raised! (See above)
+==============================

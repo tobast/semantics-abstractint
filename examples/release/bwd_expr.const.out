@@ -1,0 +1,53 @@
+ALERT: Assert failure in b(2) >= 5 && a(1) >= 2 at examples/release/bwd_expr.c:7:2, with domain
+a(1): ⊤
+b(2): ⊤
+c(3): ⊤
+
+NODE 1 [examples/release/bwd_expr.c:1:0]: (took 1 iterations) [ENTRY POINT: main]
+a(1): 0
+b(2): 0
+c(3): 0
+
+NODE 2 [examples/release/bwd_expr.c:9:1]: (took 4 iterations) [EXIT POINT: main]
+a(1): ⊤
+b(2): ⊤
+c(3): ⊤
+
+NODE 3 [examples/release/bwd_expr.c:3:1]: (took 2 iterations)
+a(1): ⊤
+b(2): 0
+c(3): 0
+
+NODE 4 [examples/release/bwd_expr.c:4:1]: (took 2 iterations)
+a(1): ⊤
+b(2): ⊤
+c(3): 0
+
+NODE 5 [examples/release/bwd_expr.c:5:1]: (took 2 iterations)
+a(1): ⊤
+b(2): ⊤
+c(3): 0
+
+NODE 6 [examples/release/bwd_expr.c:5:13]: (took 2 iterations)
+a(1): ⊤
+b(2): ⊤
+c(3): 0
+
+NODE 7 [examples/release/bwd_expr.c:7:2]: (took 2 iterations)
+a(1): ⊤
+b(2): ⊤
+c(3): ⊤
+
+NODE 8 [examples/release/bwd_expr.c:1:0]: (took 0 iterations)
+a(1): 0
+b(2): 0
+c(3): 0
+
+NODE 9 [examples/release/bwd_expr.c:11:0]: (took 1 iterations)
+a(1): 0
+b(2): 0
+c(3): 0
+
+==============================
+ALERT: 1 alert was raised! (See above)
+==============================

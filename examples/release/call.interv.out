@@ -1,0 +1,82 @@
+NODE 1 [examples/release/call.c:1:0]: (took 6 iterations) [ENTRY POINT: add]
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [0, 0]
+
+NODE 2 [examples/release/call.c:3:1]: (took 5 iterations) [EXIT POINT: add]
+a(1): [2, 3]
+b(2): [3, 4]
+return value (3): [5, 7]
+x(4): [0, 0]
+
+NODE 3 [examples/release/call.c:5:0]: (took 1 iterations) [ENTRY POINT: main]
+a(1): [0, 0]
+b(2): [0, 0]
+x(4): [0, 0]
+
+NODE 4 [examples/release/call.c:9:1]: (took 2 iterations) [EXIT POINT: main]
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [20, 28]
+
+NODE 5 [examples/release/call.c:7:1]: (took 2 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [10, 14]
+
+NODE 6 [examples/release/call.c:6:16]: (took 2 iterations)
+a(1): [0, 0]
+b(2): [3, 3]
+x(4): [0, 0]
+
+NODE 7 [examples/release/call.c:6:14]: (took 2 iterations)
+a(1): [2, 2]
+b(2): [3, 3]
+x(4): [0, 0]
+
+NODE 8 [examples/release/call.c:6:12]: (took 5 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [0, 0]
+
+NODE 9 [examples/release/call.c:6:12]: (took 5 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [0, 0]
+
+NODE 10 [examples/release/call.c:6:27]: (took 4 iterations)
+a(1): [2, 3]
+b(2): [4, 4]
+x(4): [0, 0]
+
+NODE 11 [examples/release/call.c:6:25]: (took 4 iterations)
+a(1): [3, 3]
+b(2): [4, 4]
+x(4): [0, 0]
+
+NODE 12 [examples/release/call.c:6:23]: (took 2 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [0, 0]
+
+NODE 13 [examples/release/call.c:6:23]: (took 2 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [0, 0]
+
+NODE 14 [examples/release/call.c:8:1]: (took 2 iterations)
+a(1): [2, 3]
+b(2): [3, 4]
+x(4): [20, 28]
+
+NODE 15 [examples/release/call.c:1:0]: (took 0 iterations)
+a(1): [0, 0]
+b(2): [0, 0]
+x(4): [0, 0]
+
+NODE 16 [examples/release/call.c:11:0]: (took 1 iterations)
+a(1): [0, 0]
+b(2): [0, 0]
+x(4): [0, 0]
+
+No alarm. Every assertion is correct.

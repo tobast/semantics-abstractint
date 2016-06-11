@@ -1,0 +1,40 @@
+NODE 1 [examples/release/constants.c:1:0]: (took 1 iterations) [ENTRY POINT: main]
+x(2): 0
+
+NODE 2 [examples/release/constants.c:13:1]: (took 2 iterations) [EXIT POINT: main]
+return value (1): 3
+x(2): 3
+
+NODE 3 [examples/release/constants.c:3:1]: (took 2 iterations)
+x(2): 0
+
+NODE 4 [examples/release/constants.c:4:1]: (took 2 iterations)
+x(2): 5
+
+NODE 5 [examples/release/constants.c:5:1]: (took 2 iterations)
+x(2): 20
+
+NODE 6 [examples/release/constants.c:6:1]: (took 2 iterations)
+x(2): 10
+
+NODE 7 [examples/release/constants.c:7:1]: (took 2 iterations)
+x(2): 9
+
+NODE 8 [examples/release/constants.c:11:1]: (took 4 iterations)
+x(2): 3
+
+NODE 9 [examples/release/constants.c:9:5]: (took 2 iterations)
+
+NODE 10 [examples/release/constants.c:7:11]: (took 2 iterations)
+x(2): 9
+
+NODE 11 [examples/release/constants.c:12:1]: (took 2 iterations)
+x(2): 3
+
+NODE 12 [examples/release/constants.c:1:0]: (took 0 iterations)
+x(2): 0
+
+NODE 13 [examples/release/constants.c:15:0]: (took 1 iterations)
+x(2): 0
+
+No alarm. Every assertion is correct.
