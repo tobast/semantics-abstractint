@@ -105,17 +105,6 @@ module Make(X : Domain.DOMAIN) = struct
         else
             dom
             
-    let getFctFilter filt cfg node =
-        List.fold_left (fun cur fct ->
-                if filt fct node then 
-                    Some fct
-                else
-                    cur) None cfg.cfg_funcs
-    let getFctEntry =
-        getFctFilter (fun fct node -> fct.func_entry.node_id = node.node_id)
-    let getFctExit =
-        getFctFilter (fun fct node -> fct.func_exit.node_id = node.node_id)
-
     let updateNode cfg nodeOrd node env pEnv curVisits =
         let pDom = extractDomain env node in
         let nDom = List.fold_left (fun cur arc -> 
@@ -125,7 +114,7 @@ module Make(X : Domain.DOMAIN) = struct
                         (domOfArc arc (extractDomain env arc.arc_src) env)) in
                 X.join cur nVal)
             X.bottom
-            (match getFctEntry cfg node with
+            (match Helpers.getFctEntry cfg node with
             | None -> node.node_in
             | Some fct ->
                 List.map (fun x -> { x with arc_inst = (CFG_skip "call") })
@@ -148,7 +137,7 @@ module Make(X : Domain.DOMAIN) = struct
         let precAbstract = extractDomain pEnv node in
         let nEnv,npEnv = updateNode cfg nodeOrd node env pEnv precVisits in
 
-		(*
+        (*
         Format.eprintf "Changed domain at %d:@." node.node_id;
         X.print stderr (extractDomain nEnv node);
         Format.eprintf "@."; *)
@@ -160,8 +149,7 @@ module Make(X : Domain.DOMAIN) = struct
         let nWorklist = NodeSet.remove node
             (match X.equal precAbstract (fst (NodeMap.find node npEnv)),
                     NodeSet.mem node once with
-            | true,false ->
-                worklist
+            | true,false -> worklist
             | false,_ | true,true ->
                 (*
                 Format.eprintf "Domain changed: from @."; 
@@ -170,7 +158,7 @@ module Make(X : Domain.DOMAIN) = struct
                 X.print stderr (NodeMap.find node nEnv);
                 Format.eprintf "===@."; *)
                 NodeSet.union worklist (NodeSet.of_list
-                    (match getFctExit cfg node with
+                    (match Helpers.getFctExit cfg node with
                     | None -> List.map arcUpdateNode node.node_out
                     | Some fct ->
                             List.map (fun x -> x.arc_dst) fct.func_calls))
@@ -236,7 +224,9 @@ module Make(X : Domain.DOMAIN) = struct
         let startWL = NodeSet.of_list
             (List.map (fun x -> x.arc_dst) entryNode.node_out) in
 
-        let outDom = iterate cfg nodeOrder preiterEnv botEnv
+        let intDom = iterate cfg nodeOrder preiterEnv botEnv
+            (NodeSet.of_list cfg.cfg_nodes) startWL in
+        let outDom = iterate cfg nodeOrder intDom preiterEnv
             (NodeSet.of_list cfg.cfg_nodes) startWL in
         
         outDom, getAssertFails cfg outDom
@@ -247,6 +237,6 @@ module Make(X : Domain.DOMAIN) = struct
 		Printf.fprintf ch " at %s may have failed, \
 			with domain\n"
             (Cfg_printer.string_of_position asser.assert_pos) ;
-        X.print ch asser.assert_dom ;
+        X.print [] ch asser.assert_dom ;
         Printf.fprintf ch "\n"
 end

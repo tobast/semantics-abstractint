@@ -108,7 +108,7 @@ let narrow a b = a
 let subset a b =
     SiStSet.subset a b
 
-let print chan a =
+let print _ chan a =
     let ft = Format.formatter_of_out_channel chan in
     SiStSet.iter (fun map ->
         Format.fprintf ft "[@.@[";

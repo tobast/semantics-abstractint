@@ -44,13 +44,25 @@ let dump filename =
   Printf.printf "%a" Cfg_printer.print_cfg cfg;
   Cfg_printer.output_dot "cfg.dot" cfg
 
-let printDomain printer dom =
+let printDomain cfg printer dom =
     Cfg.NodeMap.iter (fun nd v ->
-        Format.printf "NODE %d [%s]: (took %d iterations)@."
+        let pointSuffix, overrideVar =
+            (match Helpers.getFctEntry cfg nd, Helpers.getFctExit cfg nd with
+            | Some fct, None -> " [ENTRY POINT: "^Cfg.(fct.func_name)^"]",[]
+            | None, Some fct ->
+                    " [EXIT POINT: "^Cfg.(fct.func_name)^"]",
+                    (match Cfg.(fct.func_ret) with
+                    | None -> []
+                    | Some retVar -> [(retVar, "return value")])
+            | None,None -> "",[]
+            | Some _, Some _ -> " [WEIRD POINT: entry and exit. What \
+                have you done?!]",[]
+            ) in
+        Format.printf "NODE %d [%s]: (took %d iterations)%s@."
             Cfg.(nd.node_id) (Cfg_printer.string_of_position
                 Cfg.(nd.node_pos))
-            (snd v);
-        printer stdout (fst v);
+            (snd v) pointSuffix;
+        printer overrideVar stdout (fst v);
         Format.printf "@.") dom
         
 let printAsserts printer = function
@@ -59,9 +71,9 @@ let printAsserts printer = function
     List.iter (printer stdout) asserts
     
 
-let printResult printer assertPrinter (dom,asserts) =
+let printResult cfg printer assertPrinter (dom,asserts) =
     printAsserts assertPrinter asserts ;
-    printDomain printer dom ;
+    printDomain cfg printer dom ;
     if asserts <> [] then
         let assertLen = List.length asserts in
         Printf.printf "==============================\n\
@@ -80,15 +92,15 @@ let process filename =
     DomSet.iter (fun dom -> (match dom with
             | DomIntervals ->
                 let res = IntervalIterator.run cfg in
-                printResult DomainInterval.print
+                printResult cfg DomainInterval.print
                     IntervalIterator.printAssertFailed res
             | DomConcrete ->
                 let res = ConcreteIterator.run cfg in
-                printResult ConcreteDomain.print
+                printResult cfg ConcreteDomain.print
                     ConcreteIterator.printAssertFailed res
             | DomConstants ->
                 let res = ConstantIterator.run cfg in
-                printResult DomainConstant.print
+                printResult cfg DomainConstant.print
                     ConstantIterator.printAssertFailed res
         )) !domains
                 

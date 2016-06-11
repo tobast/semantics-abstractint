@@ -44,3 +44,22 @@ let notElim =
         CFG_bool_rand
     in
     doElim false
+
+let startsWith str sub =
+    if String.length str < String.length sub then
+        false
+    else
+        String.sub str 0 (String.length sub) = sub
+        
+let getFctFilter filt cfg node =
+    List.fold_left (fun cur fct ->
+            if filt fct node then 
+                Some fct
+            else
+                cur) None cfg.cfg_funcs
+let getFctEntry =
+    getFctFilter (fun fct node -> fct.func_entry.node_id = node.node_id)
+let getFctExit =
+    getFctFilter (fun fct node -> fct.func_exit.node_id = node.node_id)
+
+

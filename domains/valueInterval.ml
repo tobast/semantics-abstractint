@@ -145,14 +145,14 @@ let const z = Interv(Int z, Int z)
 
 let rand a b = Interv(Int a, Int b)
 
-let join d1 d2 = match (d1,d2) with
+let join d1 d2 = bottomize (match (d1,d2) with
 | Bottom, x | x, Bottom -> x
 | Interv(a,b), Interv(c,d) ->
-        Interv(boundMin a c, boundMax b d)
-let meet d1 d2 = match (d1,d2) with
+        Interv(boundMin a c, boundMax b d))
+let meet d1 d2 = bottomize (match (d1,d2) with
 | Bottom, x | x, Bottom -> Bottom
 | Interv(a,b), Interv(c,d) ->
-        Interv(boundMax a c, boundMin b d)
+        Interv(boundMax a c, boundMin b d))
 
 let unary iv op = match(iv, op) with
 | Bottom,_ -> Bottom
@@ -168,10 +168,11 @@ let binary iv1 iv2 op = match op,iv1,iv2 with
 | AST_MULTIPLY,Interv(a,b),Interv(c,d) ->
         let pairs = [ a *@ c ; a *@ d ; b *@ c ; b *@ d ] in
         Interv(listMin pairs, listMax pairs)
-| AST_DIVIDE,(Interv(a,b) as num),Interv(c,d) ->
-        let inf = Interv(c, boundMin d (Int Z.minus_one)) in
-        let sup = Interv(boundMax c (Int Z.one), d) in
+| AST_DIVIDE,(Interv(a,b) as num),(Interv(c,d) as den) ->
+        let inf = meet den (Interv(MInf,Int(Z.minus_one))) in
+        let sup = meet den (Interv(Int Z.one, PInf)) in
         join (domDivide num inf) (domDivide num sup)
+        
 | AST_MODULO,Interv(a,b),Interv(c,d) ->
         let bound = boundMax (boundAbs c) (boundAbs d) in
         join

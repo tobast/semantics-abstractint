@@ -54,7 +54,7 @@ module type DOMAIN =
     val is_bottom: t -> bool
         
     (* prints *)
-    val print: out_channel -> t -> unit
+    val print: (Cfg.var*string) list -> out_channel -> t -> unit
         
   end
 

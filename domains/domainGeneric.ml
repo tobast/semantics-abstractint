@@ -12,7 +12,16 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
                 VarMap.add var (ValueX.const (Z.zero)) cur)
             VarMap.empty vars
 
+    let is_bottom dom =
+        VarMap.is_empty dom || (VarMap.fold
+                (fun _ v cur -> if ValueX.is_bottom v then true else cur)
+                dom false)
+
     let bottom = VarMap.empty
+    
+    let bottomize dom =
+        if is_bottom dom then bottom
+        else dom
 
     let rec evalIntExpr dom = function
     | CFG_int_unary(unop, expr) ->
@@ -27,20 +36,20 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
     | CFG_int_rand(low,high) -> ValueX.rand low high
 
     let assign dom var expr =
-        VarMap.add var (evalIntExpr dom expr) dom
+        bottomize (VarMap.add var (evalIntExpr dom expr) dom)
         
     let join d1 d2 =
-        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | None,v | v,None -> v
-            | Some sv1, Some sv2 -> Some (ValueX.join sv1 sv2))) d1 d2
+            | Some sv1, Some sv2 -> Some (ValueX.join sv1 sv2))) d1 d2)
             
-    let meet =
-        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let meet d1 d2 =
+        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None, None | None, Some _ | Some _, None -> None
-            | Some sv1, Some sv2 -> Some (ValueX.meet sv1 sv2)))
+            | Some sv1, Some sv2 -> Some (ValueX.meet sv1 sv2))) d1 d2)
         
-    let rec bwdPropagate exp value dom = match exp with
+    let rec bwdPropagate exp value dom = bottomize (match exp with
     | CFG_int_unary(op,ex) ->
         let bwdVal = ValueX.bwd_unary (evalIntExpr dom ex) op value in
         bwdPropagate ex bwdVal dom
@@ -53,11 +62,11 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             (bwdPropagate ex2 bwdRight dom)
 	| CFG_int_var(var) -> VarMap.add var value dom
 	| CFG_int_const(cst) -> dom
-	| CFG_int_rand(lo,hi) -> dom
+	| CFG_int_rand(lo,hi) -> dom)
 
     exception NotElimFail
     let guard dom expr =
-        let rec guardBool = function
+        let rec guardBool v = bottomize (match v with
         | CFG_bool_unary(unop,exp) ->
             (match unop with
             | AST_NOT -> raise NotElimFail
@@ -84,21 +93,21 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             | true -> dom
             )
         | CFG_bool_rand ->
-            bottom
+            bottom)
         in
         guardBool (Helpers.notElim expr)
         
-    let widen =
-        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let widen d1 d2 =
+        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | Some v, None | None, Some v -> Some v
-            | Some v1, Some v2 -> Some (ValueX.widen v1 v2)))
+            | Some v1, Some v2 -> Some (ValueX.widen v1 v2))) d1 d2)
         
-    let narrow =
-        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let narrow d1 d2 =
+        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | Some v, None | None, Some v -> Some v
-            | Some v1, Some v2 -> Some (ValueX.narrow v1 v2)))
+            | Some v1, Some v2 -> Some (ValueX.narrow v1 v2))) d1 d2)
 
     let subset d1 d2 =
         VarMap.fold (fun key v cur -> match cur with
@@ -110,17 +119,20 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
                         true))
             d2 true
 
-    let is_bottom dom =
-        VarMap.is_empty dom || (VarMap.fold
-                (fun _ v cur -> if ValueX.is_bottom v then true else cur)
-                dom false)
-
-    let print chan dom =
+    let print overrideVar chan dom =
         VarMap.iter (fun k v ->
-            Cfg_printer.print_var chan k;
-            Printf.fprintf chan ": ";
-            ValueX.print chan v;
-            Printf.fprintf chan "\n") dom
+            let override = List.mem_assoc k overrideVar in
+                
+            if override || not (Helpers.startsWith k.var_name "__") then begin
+                (if override then
+                    Printf.fprintf chan "%s (%d)"
+                        (List.assoc k overrideVar) k.var_id
+                else
+                    Cfg_printer.print_var chan k);
+                Printf.fprintf chan ": ";
+                ValueX.print chan v;
+                Printf.fprintf chan "\n"
+            end) dom
 end
 
 module DomainInterval = Make(ValueInterval)
