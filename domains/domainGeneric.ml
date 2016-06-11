@@ -35,21 +35,21 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
     | CFG_int_const(c) -> ValueX.const c
     | CFG_int_rand(low,high) -> ValueX.rand low high
 
-    let assign dom var expr =
-        bottomize (VarMap.add var (evalIntExpr dom expr) dom)
+    let assign dom var expr = bottomize @@
+        VarMap.add var (evalIntExpr dom expr) dom
         
-    let join d1 d2 =
-        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let join d1 d2 = bottomize @@
+        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | None,v | v,None -> v
-            | Some sv1, Some sv2 -> Some (ValueX.join sv1 sv2))) d1 d2)
+            | Some sv1, Some sv2 -> Some (ValueX.join sv1 sv2))) d1 d2
             
-    let meet d1 d2 =
-        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let meet d1 d2 = bottomize @@ 
+        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None, None | None, Some _ | Some _, None -> None
-            | Some sv1, Some sv2 -> Some (ValueX.meet sv1 sv2))) d1 d2)
+            | Some sv1, Some sv2 -> Some (ValueX.meet sv1 sv2))) d1 d2
         
-    let rec bwdPropagate exp value dom = bottomize (match exp with
+    let rec bwdPropagate exp value dom = bottomize @@ match exp with
     | CFG_int_unary(op,ex) ->
         let bwdVal = ValueX.bwd_unary (evalIntExpr dom ex) op value in
         bwdPropagate ex bwdVal dom
@@ -62,11 +62,11 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             (bwdPropagate ex2 bwdRight dom)
 	| CFG_int_var(var) -> VarMap.add var value dom
 	| CFG_int_const(cst) -> dom
-	| CFG_int_rand(lo,hi) -> dom)
+	| CFG_int_rand(lo,hi) -> dom
 
     exception NotElimFail
     let guard dom expr =
-        let rec guardBool v = bottomize (match v with
+        let rec guardBool v = bottomize @@ match v with
         | CFG_bool_unary(unop,exp) ->
             (match unop with
             | AST_NOT -> raise NotElimFail
@@ -93,21 +93,21 @@ module Make(ValueX : Value_domain.VALUE_DOMAIN) = struct
             | true -> dom
             )
         | CFG_bool_rand ->
-            bottom)
+            bottom
         in
         guardBool (Helpers.notElim expr)
         
-    let widen d1 d2 =
-        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let widen d1 d2 = bottomize @@ 
+        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | Some v, None | None, Some v -> Some v
-            | Some v1, Some v2 -> Some (ValueX.widen v1 v2))) d1 d2)
+            | Some v1, Some v2 -> Some (ValueX.widen v1 v2))) d1 d2
         
-    let narrow d1 d2 =
-        bottomize (VarMap.merge (fun key v1 v2 -> (match v1,v2 with
+    let narrow d1 d2 = bottomize @@
+        VarMap.merge (fun key v1 v2 -> (match v1,v2 with
             | None,None -> None
             | Some v, None | None, Some v -> Some v
-            | Some v1, Some v2 -> Some (ValueX.narrow v1 v2))) d1 d2)
+            | Some v1, Some v2 -> Some (ValueX.narrow v1 v2))) d1 d2
 
     let subset d1 d2 =
         VarMap.fold (fun key v cur -> match cur with

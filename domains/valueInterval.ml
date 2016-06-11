@@ -98,7 +98,7 @@ let boundMax a b =
         else a
 
 exception BadDomain
-let domDivide d1 d2 = match d1,d2 with
+let domDivide d1 d2 = bottomize (match d1,d2 with
 | Bottom, _ | _, Bottom -> Bottom
 | Interv(a,b), Interv(c,d) ->
     if (Int Z.zero) <@ c then
@@ -106,7 +106,7 @@ let domDivide d1 d2 = match d1,d2 with
     else if d <@ (Int Z.zero) then
         Interv(boundMin (b /@ c) (b /@ d), boundMax (a /@ c) (a /@ d))
     else
-        raise BadDomain
+        raise BadDomain)
 
 exception EmptyList
 let listMin l =
@@ -143,7 +143,7 @@ let bottom = Bottom
 
 let const z = Interv(Int z, Int z)
 
-let rand a b = Interv(Int a, Int b)
+let rand a b = bottomize @@ Interv(Int a, Int b)
 
 let join d1 d2 = bottomize (match (d1,d2) with
 | Bottom, x | x, Bottom -> x
@@ -154,12 +154,12 @@ let meet d1 d2 = bottomize (match (d1,d2) with
 | Interv(a,b), Interv(c,d) ->
         Interv(boundMax a c, boundMin b d))
 
-let unary iv op = match(iv, op) with
+let unary iv op = bottomize @@ match(iv, op) with
 | Bottom,_ -> Bottom
 | _,AST_UNARY_PLUS -> iv
 | Interv(a,b),AST_UNARY_MINUS -> Interv(boundNeg b,boundNeg a)
 
-let binary iv1 iv2 op = match op,iv1,iv2 with
+let binary iv1 iv2 op = bottomize @@ match op,iv1,iv2 with
 | _,Bottom,_ | _,_,Bottom -> Bottom
 | AST_PLUS,Interv(a,b),Interv(c,d) ->
         Interv(a +@ c, b +@ d)
@@ -181,7 +181,7 @@ let binary iv1 iv2 op = match op,iv1,iv2 with
             (if (Int Z.zero) <@ b then Interv(Int Z.zero, bound)
                                   else Bottom)
 
-let rec compare d1 d2 op = match d1,d2 with
+let rec compare d1 d2 op = (Helpers.pmap bottomize) @@ match d1,d2 with
 | Bottom,_ | _,Bottom -> Bottom,Bottom
 | Interv(a,b), Interv(c,d) ->
     let swap (x,y) = (y,x) in
@@ -209,14 +209,14 @@ let rec compare d1 d2 op = match d1,d2 with
             swap (compare d2 d1 AST_LESS_EQUAL)
     )
 
-let bwd_unary d1 op r = match d1,r with
+let bwd_unary d1 op r = bottomize @@ match d1,r with
 | Bottom,_ | _,Bottom -> Bottom
 | Interv(_,_), Interv(lo,hi) -> (match op with
     | AST_UNARY_PLUS -> meet d1 r
     | AST_UNARY_MINUS -> meet d1 (Interv(boundNeg hi, boundNeg lo))
 )
 
-let bwd_binary d1 d2 op r = match d1,d2,r with
+let bwd_binary d1 d2 op r = (Helpers.pmap bottomize) @@ match d1,d2,r with
 | Bottom,_,_ | _,Bottom,_ | _,_,Bottom -> Bottom,Bottom
 | Interv(a,b), Interv(c,d), Interv(lo,hi) -> (match op with
     | AST_PLUS ->
@@ -234,13 +234,13 @@ let bwd_binary d1 d2 op r = match d1,d2,r with
 	| AST_MODULO -> d1,d2
 )
     
-let widen d1 d2 = match (d1,d2) with
+let widen d1 d2 = bottomize @@ match (d1,d2) with
 | x, Bottom | Bottom, x -> x
 | Interv(a,b), Interv(c,d) ->
         Interv( (if a <=@ c then a else MInf) ,
             (if d <=@ b then b else PInf) )
     
-let narrow d1 d2 = match d1,d2 with
+let narrow d1 d2 = bottomize @@ match d1,d2 with
 | Bottom,x | x,Bottom -> x
 | Interv(l1,u1), Interv(l2,u2) ->
     Interv((if l1 = MInf then l2 else l1),

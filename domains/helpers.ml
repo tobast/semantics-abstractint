@@ -61,5 +61,7 @@ let getFctEntry =
     getFctFilter (fun fct node -> fct.func_entry.node_id = node.node_id)
 let getFctExit =
     getFctFilter (fun fct node -> fct.func_exit.node_id = node.node_id)
+    
+let pmap f (x,y) = f x, f y
 
 
